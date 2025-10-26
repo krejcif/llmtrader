@@ -1,0 +1,140 @@
+/* Modern Dark Theme - No Rounded Corners */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0a0e1a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    background: #151b2b;
+    border: 1px solid #1e293b;
+    padding: 24px 32px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    color: #ffffff;
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.header-subtitle {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+/* Cards */
+.stat-card,
+.kpi-card,
+.chart-section,
+.log-card {
+    background: #151b2b;
+    border: 1px solid #1e293b;
+    padding: 20px;
+}
+
+.stat-card:hover {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+/* Text */
+.stat-value,
+.kpi-value {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.stat-label,
+.kpi-label {
+    color: #94a3b8;
+}
+
+h2, h3 {
+    color: #ffffff;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: #0a0e1a;
+    color: #cbd5e1;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid #1e293b;
+}
+
+td {
+    padding: 15px;
+    border-bottom: 1px solid #1e293b;
+    color: #e2e8f0;
+}
+
+tr:hover {
+    background: #151b2b;
+}
+
+/* Buttons */
+button,
+.nav-link,
+.refresh-btn {
+    background: #3b82f6;
+    border: 1px solid #60a5fa;
+    color: white;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+button:hover,
+.nav-link:hover,
+.refresh-btn:hover {
+    background: #2563eb;
+    border-color: #3b82f6;
+}
+
+/* Status indicators */
+.profit {
+    color: #10b981;
+}
+
+.loss {
+    color: #ef4444;
+}
+
+/* Badges */
+.strategy-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+}
+

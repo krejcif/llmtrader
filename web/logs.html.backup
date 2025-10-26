@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategy Logs - Trading Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1419;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: #1a1f2e;
+            
+            padding: 25px 35px;
+            margin-bottom: 20px;
+            
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .header-icon {
+            font-size: 48px;
+            line-height: 1;
+        }
+        
+        .header-title {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .header h1 {
+            color: #f1f5f9;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        
+        .header-subtitle {
+            color: #e2e8f0;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .nav-link {
+            padding: 10px 20px;
+            background: #1a1f2e;
+            border: 2px solid #667eea;
+            color: #667eea;
+            
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-link:hover {
+            background: #3b82f6; border: 1px solid #60a5fa;
+            color: white;
+            transform: translateY(-2px);
+            
+        }
+        
+        .logs-section {
+            background: #1a1f2e;
+            
+            padding: 30px;
+            
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 10px 20px;
+            border: 1px solid #334155;
+            background: #1a1f2e;
+            
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .filter-btn.active {
+            background: #3b82f6; border: 1px solid #60a5fa;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .log-card {
+            background: #334155;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            
+            transition: all 0.3s;
+        }
+        
+        .log-card:hover {
+            
+        }
+        
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .log-strategy {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        
+        .log-time {
+            font-size: 13px;
+            color: #e2e8f0;
+        }
+        
+        .log-action {
+            display: inline-block;
+            padding: 6px 12px;
+            
+            font-weight: 600;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .action-long {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .action-short {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .action-neutral {
+            background: #1a1f2e;
+            color: #e2e8f0;
+        }
+        
+        .confidence-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            
+            font-size: 12px;
+            font-weight: 600;
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .executed-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .badge-yes {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .badge-no {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .log-reasoning {
+            background: #1a1f2e;
+            padding: 15px;
+            
+            margin-top: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e2e8f0;
+        }
+        
+        .log-factors {
+            margin-top: 10px;
+        }
+        
+        .log-factors h4 {
+            font-size: 13px;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .factor-item {
+            padding: 6px 10px;
+            background: #1a1f2e;
+            
+            margin-bottom: 4px;
+            font-size: 13px;
+            color: #e2e8f0;
+        }
+        
+        .execution-reason {
+            margin-top: 10px;
+            padding: 10px;
+            background: #92400e; color: #fef3c7; border: 1px solid #f59e0b;
+            
+            font-size: 13px;
+            color: #92400e;
+        }
+        
+        .refresh-btn {
+            background: #0f1419;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            
+        }
+        
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="header-icon">📋</div>
+                <div class="header-title">
+                    <h1>Strategy Execution Logs</h1>
+                    <div class="header-subtitle">AI Decision Reasoning & Key Factors</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <a href="/" class="nav-link">
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <button class="refresh-btn" onclick="loadLogs()">
+                    <span>🔄</span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Logs Section -->
+        <div class="logs-section">
+            <h2 style="margin-bottom: 20px; color: #f1f5f9;">🤖 Strategy Decisions</h2>
+            
+            <!-- Filters -->
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">All Strategies</button>
+                <button class="filter-btn" data-filter="structured">📐 Structured</button>
+                <button class="filter-btn" data-filter="minimal">🤖 Minimal</button>
+                <button class="filter-btn" data-filter="macro">🌍 Macro</button>
+                <button class="filter-btn" data-filter="intraday">⚡ Intraday</button>
+                <button class="filter-btn" data-filter="intraday2">🔄 Intraday2</button>
+            </div>
+            
+            <!-- Logs Container -->
+            <div id="logsContainer">
+                <p style="text-align: center; padding: 40px; color: #94a3b8;">Loading...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentFilter = 'all';
+        
+        // Load logs on page load
+        window.addEventListener('load', () => {
+            loadLogs();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadLogs, 30000);
+        });
+        
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                currentFilter = e.target.dataset.filter;
+                loadLogs();
+            });
+        });
+        
+        async function loadLogs() {
+            try {
+                let url = '/api/strategy-runs?limit=100';
+                
+                // Apply strategy filter
+                if (currentFilter !== 'all') {
+                    url += `&strategy=${currentFilter}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const container = document.getElementById('logsContainer');
+                
+                if (data.runs.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; padding: 40px; color: #94a3b8;">No logs found</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.runs.map(run => {
+                    const strategyIcon = run.strategy === 'structured' ? '📐' : 
+                                       run.strategy === 'minimal' ? '🤖' : 
+                                       run.strategy === 'macro' ? '🌍' : 
+                                       run.strategy === 'intraday' ? '⚡' : '🔄';
+                    
+                    const actionClass = run.action === 'LONG' ? 'action-long' : 
+                                       run.action === 'SHORT' ? 'action-short' : 'action-neutral';
+                    
+                    const executedBadge = run.executed ? 
+                        '<span class="executed-badge badge-yes">✅ Executed</span>' : 
+                        '<span class="executed-badge badge-no">❌ Not Executed</span>';
+                    
+                    // Format time in Prague timezone (Czech locale)
+                    const timestamp = new Date(run.timestamp).toLocaleString('cs-CZ', {
+                        timeZone: 'Europe/Prague',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    
+                    // Key factors
+                    let factorsHtml = '';
+                    if (run.key_factors && run.key_factors.length > 0) {
+                        factorsHtml = `
+                            <div class="log-factors">
+                                <h4>🔑 Key Factors:</h4>
+                                ${run.key_factors.map(f => `<div class="factor-item">• ${f}</div>`).join('')}
+                            </div>
+                        `;
+                    }
+                    
+                    // Execution reason
+                    let execReasonHtml = '';
+                    if (run.execution_reason) {
+                        execReasonHtml = `
+                            <div class="execution-reason">
+                                <strong>Execution Status:</strong> ${run.execution_reason}
+                            </div>
+                        `;
+                    }
+                    
+                    return `
+                        <div class="log-card">
+                            <div class="log-header">
+                                <div>
+                                    <span class="log-strategy">${strategyIcon} ${run.strategy.toUpperCase()}</span>
+                                </div>
+                                <div class="log-time">${timestamp}</div>
+                            </div>
+                            <div>
+                                <span class="log-action ${actionClass}">${run.action}</span>
+                                ${run.confidence ? `<span class="confidence-badge">${run.confidence}</span>` : ''}
+                                ${executedBadge}
+                            </div>
+                            ${run.reasoning ? `<div class="log-reasoning">${run.reasoning}</div>` : ''}
+                            ${factorsHtml}
+                            ${execReasonHtml}
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Error loading logs:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Bot Dashboard</title>
+    <link rel="stylesheet" href="dark-theme-final.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="header-icon">🤖</div>
+                <div class="header-title">
+                    <h1>Trading Bot Dashboard</h1>
+                    <div class="header-subtitle">Multi-Strategy Paper Trading System</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <span id="botStatus" class="bot-status bot-stopped">
+                    <span class="status-dot"></span>
+                    <span>Loading...</span>
+                </span>
+                <a href="/logs" class="nav-link">
+                    <span>📋</span>
+                    <span>Strategy Logs</span>
+                </a>
+                <button class="refresh-btn" onclick="loadData()">
+                    <span>🔄</span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Statistics Grid -->
+        <div class="stats-grid">
+            <!-- Overall Stats -->
+            <div class="stat-card no-click">
+                <h3>📊 Overall Performance</h3>
+                <div class="stat-value" id="overallWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="overallWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="overallPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="overallPF">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Structured -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=structured'">
+                <h3>📐 Structured</h3>
+                <div class="stat-value" id="structuredWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="structuredWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="structuredPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="structuredPF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-structured">Technical + Rules</span>
+            </div>
+            
+            <!-- Minimal -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=minimal'">
+                <h3>🤖 Minimal</h3>
+                <div class="stat-value" id="minimalWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="minimalWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="minimalPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="minimalPF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-minimal">AI Free</span>
+            </div>
+            
+            <!-- MinimalBTC -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=minimalbtc'">
+                <h3>₿ MinimalBTC</h3>
+                <div class="stat-value" id="minimalbtcWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="minimalbtcWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="minimalbtcPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="minimalbtcPF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-minimalbtc">AI + BTC Context</span>
+            </div>
+            
+            <!-- Macro -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=macro'">
+                <h3>🌍 Macro</h3>
+                <div class="stat-value" id="macroWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="macroWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="macroPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="macroPF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-macro">News + IXIC</span>
+            </div>
+            
+            <!-- Intraday -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=intraday'">
+                <h3>⚡ Intraday</h3>
+                <div class="stat-value" id="intradayWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="intradayWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="intradayPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="intradayPF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-intraday">Scalping</span>
+            </div>
+            
+            <!-- Intraday2 -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=intraday2'">
+                <h3>🔄 Intraday2</h3>
+                <div class="stat-value" id="intraday2WinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="intraday2WinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="intraday2PnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="intraday2PF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-intraday2">Mean Reversion</span>
+            </div>
+        </div>
+        
+        <!-- Chart Section -->
+        <div class="trades-section" style="margin-bottom: 20px;">
+            <h2 style="margin-bottom: 20px; color: #1f2937;">📈 Price & Portfolio (48h)</h2>
+            <div style="position: relative; height: 280px;">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Trades Table -->
+        <div class="trades-section">
+            <h2 style="margin-bottom: 20px; color: #1f2937;">📋 Recent Trades</h2>
+            
+            <!-- Filters -->
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">All Trades</button>
+                <button class="filter-btn" data-filter="structured">📐 Structured</button>
+                <button class="filter-btn" data-filter="minimal">🤖 Minimal</button>
+                <button class="filter-btn" data-filter="minimalbtc">₿ MinimalBTC</button>
+                <button class="filter-btn" data-filter="macro">🌍 Macro</button>
+                <button class="filter-btn" data-filter="intraday">⚡ Intraday</button>
+                <button class="filter-btn" data-filter="intraday2">🔄 Intraday2</button>
+                <button class="filter-btn" data-filter="open">⏳ Open</button>
+                <button class="filter-btn" data-filter="closed">✅ Closed</button>
+            </div>
+            
+            <!-- Table -->
+            <div style="overflow-x: auto;">
+                <table id="tradesTable">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Action</th>
+                            <th>Entry</th>
+                            <th>SL / TP</th>
+                            <th>Status</th>
+                            <th>P&L</th>
+                            <th>Fees</th>
+                            <th>Entry Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradesBody">
+                        <tr><td colspan="9" style="text-align: center; padding: 40px;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentFilter = 'all';
+        let priceChart = null;
+        
+        // Load data on page load
+        window.addEventListener('load', () => {
+            loadData();
+            loadChart();
+            
+            // Auto-refresh every 15 seconds
+            setInterval(loadData, 15000);
+            // Refresh chart every 30 seconds
+            setInterval(loadChart, 30000);
+        });
+        
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                currentFilter = e.target.dataset.filter;
+                loadTrades();
+                loadChart(); // Update chart when filter changes
+            });
+        });
+        
+        async function loadData() {
+            await Promise.all([
+                loadStats(),
+                loadTrades(),
+                loadBotStatus()
+            ]);
+        }
+        
+        async function loadChart() {
+            try {
+                // Build URL with strategy filter
+                let url = '/api/chart-data';
+                if (currentFilter !== 'all' && currentFilter !== 'open' && currentFilter !== 'closed') {
+                    url += `?strategy=${currentFilter}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                
+                // Destroy existing chart if it exists
+                if (priceChart) {
+                    priceChart.destroy();
+                }
+                
+                // Determine portfolio label based on filter
+                let portfolioLabel = 'Portfolio Value';
+                if (currentFilter !== 'all' && currentFilter !== 'open' && currentFilter !== 'closed') {
+                    portfolioLabel = `Portfolio (${currentFilter.toUpperCase()})`;
+                }
+                
+                // Create new chart
+                priceChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.timestamps,
+                        datasets: [
+                            {
+                                label: 'SOLUSDT Price',
+                                data: data.prices,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                yAxisID: 'y',
+                                tension: 0.3,
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                pointHoverRadius: 5
+                            },
+                            {
+                                label: portfolioLabel,
+                                data: data.portfolio,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                yAxisID: 'y1',
+                                tension: 0.3,
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                pointHoverRadius: 5
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 13
+                                },
+                                bodyFont: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: {
+                                    display: false
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Price ($)',
+                                    color: '#667eea',
+                                    font: {
+                                        weight: 'bold'
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Portfolio ($)',
+                                    color: '#10b981',
+                                    font: {
+                                        weight: 'bold'
+                                    }
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                }
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error loading chart:', error);
+            }
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                // Overall
+                document.getElementById('overallWinRate').textContent = 
+                    data.overall.closed_trades > 0 ? `${data.overall.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('overallWinLoss').textContent = 
+                    `${data.overall.wins}/${data.overall.losses}`;
+                const overallPnL = document.getElementById('overallPnL');
+                overallPnL.textContent = `$${data.overall.total_pnl.toFixed(2)}`;
+                overallPnL.style.color = data.overall.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('overallPF').textContent = 
+                    data.overall.closed_trades > 0 ? `${data.overall.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // Structured
+                const s = data.strategies.structured;
+                document.getElementById('structuredWinRate').textContent = 
+                    s.closed_trades > 0 ? `${s.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('structuredWinLoss').textContent = 
+                    `${s.wins}/${s.losses}`;
+                const structuredPnL = document.getElementById('structuredPnL');
+                structuredPnL.textContent = `$${s.total_pnl.toFixed(2)}`;
+                structuredPnL.style.color = s.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('structuredPF').textContent = 
+                    s.closed_trades > 0 ? `${s.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // Minimal
+                const m = data.strategies.minimal;
+                document.getElementById('minimalWinRate').textContent = 
+                    m.closed_trades > 0 ? `${m.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('minimalWinLoss').textContent = 
+                    `${m.wins}/${m.losses}`;
+                const minimalPnL = document.getElementById('minimalPnL');
+                minimalPnL.textContent = `$${m.total_pnl.toFixed(2)}`;
+                minimalPnL.style.color = m.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('minimalPF').textContent = 
+                    m.closed_trades > 0 ? `${m.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // MinimalBTC
+                const mbtc = data.strategies.minimalbtc || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                document.getElementById('minimalbtcWinRate').textContent = 
+                    mbtc.closed_trades > 0 ? `${mbtc.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('minimalbtcWinLoss').textContent = 
+                    `${mbtc.wins}/${mbtc.losses}`;
+                const minimalbtcPnL = document.getElementById('minimalbtcPnL');
+                minimalbtcPnL.textContent = `$${mbtc.total_pnl.toFixed(2)}`;
+                minimalbtcPnL.style.color = mbtc.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('minimalbtcPF').textContent = 
+                    mbtc.closed_trades > 0 ? `${mbtc.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // Macro
+                const ma = data.strategies.macro;
+                document.getElementById('macroWinRate').textContent = 
+                    ma.closed_trades > 0 ? `${ma.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('macroWinLoss').textContent = 
+                    `${ma.wins}/${ma.losses}`;
+                const macroPnL = document.getElementById('macroPnL');
+                macroPnL.textContent = `$${ma.total_pnl.toFixed(2)}`;
+                macroPnL.style.color = ma.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('macroPF').textContent = 
+                    ma.closed_trades > 0 ? `${ma.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // Intraday
+                const id = data.strategies.intraday || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                document.getElementById('intradayWinRate').textContent = 
+                    id.closed_trades > 0 ? `${id.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('intradayWinLoss').textContent = 
+                    `${id.wins}/${id.losses}`;
+                const intradayPnL = document.getElementById('intradayPnL');
+                intradayPnL.textContent = `$${id.total_pnl.toFixed(2)}`;
+                intradayPnL.style.color = id.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('intradayPF').textContent = 
+                    id.closed_trades > 0 ? `${id.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // Intraday2
+                const id2 = data.strategies.intraday2 || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                document.getElementById('intraday2WinRate').textContent = 
+                    id2.closed_trades > 0 ? `${id2.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('intraday2WinLoss').textContent = 
+                    `${id2.wins}/${id2.losses}`;
+                const intraday2PnL = document.getElementById('intraday2PnL');
+                intraday2PnL.textContent = `$${id2.total_pnl.toFixed(2)}`;
+                intraday2PnL.style.color = id2.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('intraday2PF').textContent = 
+                    id2.closed_trades > 0 ? `${id2.profit_factor.toFixed(2)}` : 'N/A';
+                
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        async function loadTrades() {
+            try {
+                let url = '/api/trades?limit=50';
+                
+                // Apply filters
+                if (currentFilter === 'open' || currentFilter === 'closed') {
+                    url += `&status=${currentFilter}`;
+                } else if (currentFilter !== 'all') {
+                    url += `&strategy=${currentFilter}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                // Debug: Log first trade to console
+                if (data.trades.length > 0) {
+                    console.log('First trade data:', {
+                        trade_id: data.trades[0].trade_id,
+                        entry_fee: data.trades[0].entry_fee,
+                        exit_fee: data.trades[0].exit_fee,
+                        total_fees: data.trades[0].total_fees,
+                        pnl: data.trades[0].pnl
+                    });
+                }
+                
+                const tbody = document.getElementById('tradesBody');
+                
+                if (data.trades.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #9ca3af;">No trades found</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.trades.map(trade => {
+                    const strategyIcon = trade.strategy === 'structured' ? '📐' : 
+                                       trade.strategy === 'minimal' ? '🤖' : 
+                                       trade.strategy === 'minimalbtc' ? '₿' : 
+                                       trade.strategy === 'macro' ? '🌍' : 
+                                       trade.strategy === 'intraday' ? '⚡' : '🔄';
+                    const statusClass = trade.status === 'OPEN' ? 'status-open' : 'status-closed';
+                    
+                    // P&L display logic
+                    let pnlText, pnlClass;
+                    if (trade.status === 'CLOSED') {
+                        pnlClass = trade.pnl > 0 ? 'profit' : 'loss';
+                        pnlText = `${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)} (${trade.pnl_percentage.toFixed(2)}%)`;
+                    } else if (trade.status === 'OPEN' && trade.live_pnl_percentage !== undefined) {
+                        // Live P&L for open positions ($ and %)
+                        pnlClass = trade.live_pnl_percentage > 0 ? 'profit' : 'loss';
+                        const dollarSign = trade.live_pnl_dollars >= 0 ? '+' : '';
+                        pnlText = `${dollarSign}$${trade.live_pnl_dollars.toFixed(2)} (${trade.live_pnl_percentage >= 0 ? '+' : ''}${trade.live_pnl_percentage.toFixed(2)}%) 📊`;
+                    } else {
+                        pnlClass = '';
+                        pnlText = 'Open';
+                    }
+                    
+                    // Fees display (ensure proper number handling)
+                    const totalFees = parseFloat(trade.total_fees) || 0;
+                    const entryFee = parseFloat(trade.entry_fee) || 0;
+                    const exitFee = parseFloat(trade.exit_fee) || 0;
+                    
+                    let feesText;
+                    if (trade.status === 'CLOSED') {
+                        feesText = totalFees > 0 ? `$${totalFees.toFixed(3)}` : '$0.000';
+                    } else {
+                        feesText = entryFee > 0 ? `$${entryFee.toFixed(3)}*` : '$0.000*';
+                    }
+                    
+                    // Format time in Prague timezone (Czech locale)
+                    const entryTime = new Date(trade.entry_time).toLocaleString('cs-CZ', {
+                        timeZone: 'Europe/Prague',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    
+                    // Action buttons (show Close for OPEN trades, only Delete for CLOSED)
+                    let actionButtons = '';
+                    if (trade.status === 'OPEN') {
+                        actionButtons = `
+                            <button class="close-btn" onclick="closeTrade('${trade.trade_id}')" style="background: #10b981; margin-right: 5px;">
+                                ✅ Close
+                            </button>
+                            <button class="delete-btn" onclick="deleteTrade('${trade.trade_id}')">
+                                🗑️ Delete
+                            </button>
+                        `;
+                    } else {
+                        actionButtons = `
+                            <button class="delete-btn" onclick="deleteTrade('${trade.trade_id}')">
+                                🗑️ Delete
+                            </button>
+                        `;
+                    }
+                    
+                    return `
+                        <tr>
+                            <td>${strategyIcon} ${trade.strategy.toUpperCase()}</td>
+                            <td><strong>${trade.action}</strong></td>
+                            <td>$${trade.entry_price.toFixed(2)}</td>
+                            <td>$${trade.stop_loss.toFixed(2)} / $${trade.take_profit.toFixed(2)}</td>
+                            <td><span class="${statusClass}">${trade.status}</span></td>
+                            <td class="${pnlClass}">${pnlText}</td>
+                            <td style="color: #6b7280; font-size: 13px;">${feesText}</td>
+                            <td>${entryTime}</td>
+                            <td>
+                                ${actionButtons}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Error loading trades:', error);
+            }
+        }
+        
+        async function loadBotStatus() {
+            try {
+                const response = await fetch('/api/bot-status');
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('botStatus');
+                if (data.running) {
+                    statusEl.className = 'bot-status bot-running';
+                    statusEl.innerHTML = '<span class="status-dot"></span><span>Running</span>';
+                } else {
+                    statusEl.className = 'bot-status bot-stopped';
+                    statusEl.innerHTML = '<span class="status-dot"></span><span>Stopped</span>';
+                }
+            } catch (error) {
+                console.error('Error loading bot status:', error);
+            }
+        }
+        
+        async function closeTrade(tradeId) {
+            if (!confirm(`Close trade ${tradeId} at current market price?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/close-trade/${tradeId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    alert(`✅ Trade closed!\n\nP&L: $${data.pnl.toFixed(2)} (${data.pnl_percentage.toFixed(2)}%)\nExit: $${data.exit_price.toFixed(2)}`);
+                    await loadData();
+                } else {
+                    alert(`❌ Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error closing trade:', error);
+                alert(`❌ Failed: ${error.message}`);
+            }
+        }
+        
+        async function deleteTrade(tradeId) {
+            // Confirm before deleting
+            if (!confirm(`Are you sure you want to delete trade ${tradeId}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/trades/${tradeId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Success - reload data
+                    alert(`✅ Trade deleted successfully!`);
+                    await loadData();
+                } else {
+                    // Error
+                    alert(`❌ Error: ${data.error || 'Failed to delete trade'}`);
+                }
+            } catch (error) {
+                console.error('Error deleting trade:', error);
+                alert(`❌ Error deleting trade: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
+

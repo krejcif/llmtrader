@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategy Analysis - Trading Bot</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f172a;
+            padding: 20px;
+            color: #f1f5f9;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            background: #1e293b;
+            
+            padding: 24px 32px;
+            margin-bottom: 20px;
+            
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .back-btn {
+            background: #1e293b;
+            border: none;
+            padding: 10px 16px;
+            
+            cursor: pointer;
+            font-weight: 600;
+            color: #94a3b8;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .back-btn:hover {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+        }
+        
+        .strategy-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .strategy-icon {
+            font-size: 32px;
+        }
+        
+        .strategy-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        
+        .strategy-badge {
+            padding: 6px 12px;
+            
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .kpi-card {
+            background: #1e293b;
+            
+            padding: 20px;
+            
+        }
+        
+        .kpi-label {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        
+        .kpi-value.positive {
+            color: #10b981;
+        }
+        
+        .kpi-value.negative {
+            color: #ef4444;
+        }
+        
+        .kpi-subtext {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        /* Chart Sections */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-section {
+            background: #1e293b;
+            
+            padding: 24px;
+            
+        }
+        
+        .chart-section.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th {
+            text-align: left;
+            padding: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .data-table td {
+            padding: 12px;
+            font-size: 14px;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .data-table tr:hover {
+            background: #334155;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #334155;
+            
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <a href="/" class="back-btn">
+                    <span>←</span>
+                    <span>Dashboard</span>
+                </a>
+                <div class="strategy-title">
+                    <span class="strategy-icon" id="strategyIcon">📊</span>
+                    <h1 class="strategy-name" id="strategyName">Loading...</h1>
+                    <span class="strategy-badge" id="strategyBadge"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Win Rate</div>
+                <div class="kpi-value" id="kpiWinRate">--%</div>
+                <div class="kpi-subtext" id="kpiWinLoss">-- wins / -- losses</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total P&L</div>
+                <div class="kpi-value" id="kpiPnL">$--</div>
+                <div class="kpi-subtext" id="kpiPnLPercent">--% return</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Profit Factor</div>
+                <div class="kpi-value" id="kpiProfitFactor">--</div>
+                <div class="kpi-subtext">Wins / Losses ratio</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Trades</div>
+                <div class="kpi-value" id="kpiTotalTrades">--</div>
+                <div class="kpi-subtext" id="kpiAvgDuration">Avg: -- hours</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Avg Win</div>
+                <div class="kpi-value positive" id="kpiAvgWin">$--</div>
+                <div class="kpi-subtext" id="kpiAvgWinPercent">--% per trade</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Avg Loss</div>
+                <div class="kpi-value negative" id="kpiAvgLoss">$--</div>
+                <div class="kpi-subtext" id="kpiAvgLossPercent">--% per trade</div>
+            </div>
+        </div>
+        
+        <!-- Additional Trading Ratios -->
+        <div class="kpi-grid" style="margin-top: 0;">
+            <div class="kpi-card">
+                <div class="kpi-label">Sharpe Ratio</div>
+                <div class="kpi-value" id="kpiSharpe">--</div>
+                <div class="kpi-subtext">Risk-adjusted return</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Sortino Ratio</div>
+                <div class="kpi-value" id="kpiSortino">--</div>
+                <div class="kpi-subtext">Downside deviation</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Calmar Ratio</div>
+                <div class="kpi-value" id="kpiCalmar">--</div>
+                <div class="kpi-subtext">Return / Max DD</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Expectancy</div>
+                <div class="kpi-value" id="kpiExpectancy">$--</div>
+                <div class="kpi-subtext">Expected value per trade</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Kelly %</div>
+                <div class="kpi-value" id="kpiKelly">--%</div>
+                <div class="kpi-subtext">Optimal position size</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Payoff Ratio</div>
+                <div class="kpi-value" id="kpiPayoff">--</div>
+                <div class="kpi-subtext">Avg Win / Avg Loss</div>
+            </div>
+        </div>
+        
+        <!-- Charts Grid -->
+        <div class="chart-grid">
+            <!-- Equity Curve -->
+            <div class="chart-section full-width">
+                <h2 class="section-title">📈 Equity Curve</h2>
+                <div class="chart-container">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- P&L Distribution -->
+            <div class="chart-section">
+                <h2 class="section-title">📊 P&L Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="pnlDistChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Win/Loss by Hour -->
+            <div class="chart-section">
+                <h2 class="section-title">⏰ Performance by Hour (UTC)</h2>
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats & Tables Grid -->
+        <div class="chart-grid">
+            <!-- Risk Metrics -->
+            <div class="chart-section">
+                <h2 class="section-title">⚠️ Risk Metrics</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Max Drawdown</span>
+                        <span class="stat-value" id="maxDrawdown">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Best Trade</span>
+                        <span class="stat-value" id="bestTrade">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Worst Trade</span>
+                        <span class="stat-value" id="worstTrade">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Avg Hold Time</span>
+                        <span class="stat-value" id="avgHoldTime">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Fees</span>
+                        <span class="stat-value" id="totalFees">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Win Streak</span>
+                        <span class="stat-value" id="winStreak">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Loss Streak</span>
+                        <span class="stat-value" id="lossStreak">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Recovery Factor</span>
+                        <span class="stat-value" id="recoveryFactor">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Trades -->
+            <div class="chart-section">
+                <h2 class="section-title">🔄 Recent Trades</h2>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Entry</th>
+                                <th>Exit</th>
+                                <th>Action</th>
+                                <th>P&L</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentTradesTable">
+                            <tr><td colspan="4" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Get strategy from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const strategy = urlParams.get('strategy') || 'minimal';
+        
+        let equityChart, pnlDistChart, hourlyChart;
+        
+        // Strategy config
+        const strategyConfig = {
+            'structured': {
+                icon: '📐',
+                name: 'STRUCTURED',
+                badge: 'Technical + Rules',
+                badgeClass: 'badge-structured'
+            },
+            'minimal': {
+                icon: '🤖',
+                name: 'MINIMAL',
+                badge: 'AI Free',
+                badgeClass: 'badge-minimal'
+            },
+            'minimalbtc': {
+                icon: '₿',
+                name: 'MINIMALBTC',
+                badge: 'AI + BTC Context',
+                badgeClass: 'badge-minimalbtc'
+            },
+            'macro': {
+                icon: '🌍',
+                name: 'MACRO',
+                badge: 'News + IXIC',
+                badgeClass: 'badge-macro'
+            },
+            'intraday': {
+                icon: '⚡',
+                name: 'INTRADAY',
+                badge: 'Scalping',
+                badgeClass: 'badge-intraday'
+            },
+            'intraday2': {
+                icon: '🔄',
+                name: 'INTRADAY2',
+                badge: 'Mean Reversion',
+                badgeClass: 'badge-intraday2'
+            }
+        };
+        
+        async function loadStrategyDetail() {
+            try {
+                // Set strategy info
+                const config = strategyConfig[strategy] || strategyConfig['minimal'];
+                document.getElementById('strategyIcon').textContent = config.icon;
+                document.getElementById('strategyName').textContent = config.name;
+                
+                const badge = document.getElementById('strategyBadge');
+                badge.textContent = config.badge;
+                badge.className = `strategy-badge ${config.badgeClass}`;
+                
+                // Fetch data
+                const response = await fetch(`/api/strategy-detail?strategy=${strategy}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    showEmptyState();
+                    return;
+                }
+                
+                // Populate KPIs
+                updateKPIs(data.kpis);
+                
+                // Draw charts
+                drawEquityChart(data.equity);
+                drawPnLDistribution(data.pnl_distribution);
+                drawHourlyPerformance(data.hourly_performance);
+                
+                // Update risk metrics
+                updateRiskMetrics(data.risk_metrics);
+                
+                // Update recent trades
+                updateRecentTrades(data.recent_trades);
+                
+            } catch (error) {
+                console.error('Error loading strategy detail:', error);
+                showEmptyState();
+            }
+        }
+        
+        function updateKPIs(kpis) {
+            document.getElementById('kpiWinRate').textContent = kpis.win_rate + '%';
+            document.getElementById('kpiWinLoss').textContent = `${kpis.wins} wins / ${kpis.losses} losses`;
+            
+            const pnlEl = document.getElementById('kpiPnL');
+            pnlEl.textContent = '$' + kpis.total_pnl.toFixed(2);
+            pnlEl.className = 'kpi-value ' + (kpis.total_pnl >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById('kpiPnLPercent').textContent = kpis.pnl_percent.toFixed(2) + '% return';
+            document.getElementById('kpiProfitFactor').textContent = kpis.profit_factor;
+            document.getElementById('kpiTotalTrades').textContent = kpis.total_trades;
+            document.getElementById('kpiAvgDuration').textContent = `Avg: ${kpis.avg_duration}`;
+            document.getElementById('kpiAvgWin').textContent = '$' + kpis.avg_win.toFixed(2);
+            document.getElementById('kpiAvgWinPercent').textContent = kpis.avg_win_percent + '% per trade';
+            document.getElementById('kpiAvgLoss').textContent = '$' + Math.abs(kpis.avg_loss).toFixed(2);
+            document.getElementById('kpiAvgLossPercent').textContent = Math.abs(kpis.avg_loss_percent) + '% per trade';
+            
+            // Additional ratios
+            document.getElementById('kpiSharpe').textContent = kpis.sharpe_ratio;
+            document.getElementById('kpiSortino').textContent = kpis.sortino_ratio;
+            document.getElementById('kpiCalmar').textContent = kpis.calmar_ratio;
+            document.getElementById('kpiExpectancy').textContent = '$' + kpis.expectancy;
+            document.getElementById('kpiKelly').textContent = kpis.kelly_percent + '%';
+            document.getElementById('kpiPayoff').textContent = kpis.payoff_ratio;
+        }
+        
+        function drawEquityChart(data) {
+            const ctx = document.getElementById('equityChart').getContext('2d');
+            if (equityChart) equityChart.destroy();
+            
+            equityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Portfolio Value',
+                        data: data.values,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function drawPnLDistribution(data) {
+            const ctx = document.getElementById('pnlDistChart').getContext('2d');
+            if (pnlDistChart) pnlDistChart.destroy();
+            
+            pnlDistChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Trade Count',
+                        data: data.values,
+                        backgroundColor: data.colors,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function drawHourlyPerformance(data) {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            if (hourlyChart) hourlyChart.destroy();
+            
+            hourlyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'P&L by Hour',
+                        data: data.values,
+                        backgroundColor: data.colors,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateRiskMetrics(metrics) {
+            document.getElementById('maxDrawdown').textContent = metrics.max_drawdown;
+            document.getElementById('bestTrade').textContent = metrics.best_trade;
+            document.getElementById('worstTrade').textContent = metrics.worst_trade;
+            document.getElementById('avgHoldTime').textContent = metrics.avg_hold_time;
+            document.getElementById('totalFees').textContent = metrics.total_fees;
+            document.getElementById('winStreak').textContent = metrics.win_streak;
+            document.getElementById('lossStreak').textContent = metrics.loss_streak;
+            document.getElementById('recoveryFactor').textContent = metrics.recovery_factor;
+        }
+        
+        function updateRecentTrades(trades) {
+            const tbody = document.getElementById('recentTradesTable');
+            
+            if (trades.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No trades yet</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = trades.map(trade => {
+                const pnlClass = trade.pnl >= 0 ? 'positive' : 'negative';
+                return `
+                    <tr>
+                        <td style="font-size: 12px;">${trade.entry_time}</td>
+                        <td style="font-size: 12px;">${trade.exit_time}</td>
+                        <td><span style="font-weight: 600; color: ${trade.action === 'LONG' ? '#10b981' : '#ef4444'}">${trade.action}</span></td>
+                        <td><span class="${pnlClass}" style="font-weight: 600;">$${trade.pnl.toFixed(2)}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function showEmptyState() {
+            document.querySelector('.container').innerHTML = `
+                <div class="chart-section">
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <h2>No Data Available</h2>
+                        <p>This strategy hasn't executed any trades yet.</p>
+                        <a href="/" class="back-btn" style="margin-top: 20px; display: inline-flex;">← Back to Dashboard</a>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Load on page load
+        loadStrategyDetail();
+    </script>
+</body>
+</html>
+
