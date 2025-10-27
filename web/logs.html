@@ -409,11 +409,10 @@
             <!-- Filters -->
             <div class="filters">
                 <button class="filter-btn active" data-filter="all">All Strategies</button>
-                <button class="filter-btn" data-filter="minimal">🤖 Minimal</button>
-                <button class="filter-btn" data-filter="minimal_e725">⚡ E725</button>
-                <button class="filter-btn" data-filter="minimalbtc">₿ MinimalBTC</button>
-                <button class="filter-btn" data-filter="macro">🌍 Macro</button>
-                <button class="filter-btn" data-filter="intraday">⚡ Intraday</button>
+                <button class="filter-btn" data-filter="sol"><span class="crypto-icon sol">◎</span>SOL</button>
+                <button class="filter-btn" data-filter="sol_fast"><span class="crypto-icon sol">◎</span>SOL Fast</button>
+                <button class="filter-btn" data-filter="eth"><span class="crypto-icon eth">Ξ</span>ETH</button>
+                <button class="filter-btn" data-filter="eth_fast"><span class="crypto-icon eth">Ξ</span>ETH Fast</button>
             </div>
             
             <!-- Logs Container -->
@@ -465,17 +464,26 @@
                 }
                 
                 container.innerHTML = data.runs.map(run => {
-                    const strategyIcon = run.strategy === 'minimal' ? '🤖' : 
-                                       run.strategy === 'minimal_e725' ? '⚡' : 
-                                       run.strategy === 'macro' ? '🌍' : 
-                                       run.strategy === 'intraday' ? '⚡' : 
-                                       run.strategy === 'minimalbtc' ? '₿' : '🤖';
+                    // Generate colored crypto icons
+                    let strategyIcon = '';
+                    if (run.strategy === 'sol' || run.strategy === 'sol_fast') {
+                        strategyIcon = '<span class="crypto-icon sol">◎</span>';
+                    } else if (run.strategy === 'eth' || run.strategy === 'eth_fast') {
+                        strategyIcon = '<span class="crypto-icon eth">Ξ</span>';
+                    } else {
+                        strategyIcon = '◎';
+                    }
                     
-                    const borderColor = run.strategy === 'minimal' ? '#10b981' :
-                                       run.strategy === 'minimal_e725' ? '#3b82f6' :
-                                       run.strategy === 'macro' ? '#6366f1' :
-                                       run.strategy === 'intraday' ? '#ec4899' :
-                                       run.strategy === 'minimalbtc' ? '#f59e0b' : '#10b981';
+                    const strategyName = run.strategy === 'sol' ? 'SOL' :
+                                        run.strategy === 'sol_fast' ? 'SOL Fast' :
+                                        run.strategy === 'eth' ? 'ETH' :
+                                        run.strategy === 'eth_fast' ? 'ETH Fast' :
+                                        run.strategy.toUpperCase();
+                    
+                    const borderColor = run.strategy === 'sol' ? '#10b981' :
+                                       run.strategy === 'sol_fast' ? '#3b82f6' :
+                                       run.strategy === 'eth' ? '#6366f1' :
+                                       run.strategy === 'eth_fast' ? '#8b5cf6' : '#10b981';
                     
                     const actionClass = run.action === 'LONG' ? 'action-long' : 
                                        run.action === 'SHORT' ? 'action-short' : 'action-neutral';
@@ -519,7 +527,7 @@
                     return `
                         <div class="log-card" style="border-top-color: ${borderColor}">
                             <div class="log-header">
-                                <div class="log-strategy">${strategyIcon} ${run.strategy.toUpperCase()}</div>
+                                <div class="log-strategy">${strategyIcon}${strategyName}</div>
                                 <div class="log-time">${timestamp}</div>
                             </div>
                             <div class="log-actions">

@@ -85,14 +85,15 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             
             # Check if strategy already has open trade (RISK MANAGEMENT!)
             db_check = TradingDatabase()
-            existing_open = db_check.get_open_trades(state['symbol'])
+            symbol = recommendation.get('symbol', state['symbol'])
+            existing_open = db_check.get_open_trades(symbol)
             
             # Filter for this strategy
             strategy_open = [t for t in existing_open if t.get('strategy') == strategy_name]
             
             if strategy_open:
                 # Check if opposite direction - if so, close existing trades
-                existing_direction = strategy_open[0].get('side', 'UNKNOWN')
+                existing_direction = strategy_open[0].get('action', 'UNKNOWN')  # Fixed: use 'action', not 'side'
                 opposite_direction = (existing_direction == 'LONG' and action == 'SHORT') or \
                                    (existing_direction == 'SHORT' and action == 'LONG')
                 
@@ -126,13 +127,12 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                                 pnl = (entry_price - current_price) * size
                                 pnl_pct = ((entry_price - current_price) / entry_price) * 100
                             
-                            # Close trade
+                            # Close trade (database calculates P&L automatically)
                             db_close = TradingDatabase()
                             db_close.close_trade(
                                 trade_id=trade['trade_id'],
                                 exit_price=current_price,
-                                exit_reason=f"OPPOSITE_SIGNAL ({action})",
-                                pnl=pnl
+                                exit_reason=f"OPPOSITE_SIGNAL ({action})"
                             )
                             
                             print(f"   ✅ Closed {trade['trade_id']}: ${entry_price:.2f} → ${current_price:.2f}")
@@ -141,8 +141,16 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                         except Exception as e:
                             print(f"   ❌ Error closing trade {trade['trade_id']}: {str(e)}")
                     
-                    # Now continue to open new trade in opposite direction
-                    print(f"   Opening new {action} trade...")
+                    # DO NOT open new trade in opposite direction - just close and wait for cooldown
+                    print(f"   ✅ Trade closed. Cooldown activated - no new {action} trade opened.")
+                    
+                    # Log this event
+                    log_data['executed'] = False
+                    log_data['execution_reason'] = f"Closed {existing_direction} on opposite {action} signal - cooldown active"
+                    db_log.log_strategy_run(log_data)
+                    
+                    # Skip opening new trade (cooldown will apply next time)
+                    continue
                     
                 else:
                     # Same direction - skip (don't double up)
@@ -253,7 +261,7 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             
             # TRADE 1: Partial (50% TP) - Original SL
             trade_data_1 = {
-                "symbol": state['symbol'],
+                "symbol": recommendation.get('symbol', state['symbol']),  # Prefer symbol from recommendation
                 "strategy": strategy_name,
                 "action": action,
                 "confidence": recommendation.get('confidence', 'unknown'),
@@ -279,7 +287,7 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             
             # TRADE 2: Full (100% TP) - Tighter SL (break-even style)
             trade_data_2 = {
-                "symbol": state['symbol'],
+                "symbol": recommendation.get('symbol', state['symbol']),  # Prefer symbol from recommendation
                 "strategy": strategy_name,
                 "action": action,
                 "confidence": recommendation.get('confidence', 'unknown'),

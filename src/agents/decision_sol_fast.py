@@ -1,4 +1,4 @@
-"""Decision Agent - Minimal E725 (EMA 7/25 instead of 20/50)"""
+"""Decision Agent - Sol Fast (EMA 7/25 instead of 20/50)"""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -10,7 +10,7 @@ import config
 import json
 
 
-def make_decision_minimal_e725(state: TradingState) -> TradingState:
+def make_decision_sol_fast(state: TradingState) -> TradingState:
     """
     Make trading decision using MINIMAL prompt with EMA 7/25
     
@@ -18,10 +18,10 @@ def make_decision_minimal_e725(state: TradingState) -> TradingState:
         state: Current trading state with market data and analysis
         
     Returns:
-        Updated state with trading recommendation (minimal_e725 strategy)
+        Updated state with trading recommendation (sol_fast strategy)
     """
     
-    print(f"\n🤖 [MINIMAL_E725 STRATEGY] Making decision with DeepSeek AI (EMA 7/25)...")
+    print(f"\n🤖 [SOL_FAST STRATEGY] Making decision with DeepSeek AI (EMA 7/25)...")
     
     try:
         # Check if we have analysis data
@@ -173,9 +173,11 @@ Respond ONLY with JSON:
             risk_mgmt = calculate_stop_take_profit(candles_lower, direction)
             
             recommendation['risk_management'] = risk_mgmt
-            recommendation['strategy'] = 'minimal_e725'  # Tag strategy
+            recommendation['strategy'] = 'sol_fast'  # Tag strategy
+            recommendation['symbol'] = state['symbol']  # Add symbol
             
-            print(f"\n✅ [MINIMAL_E725] Decision made:")
+            print(f"\n✅ [SOL_FAST] Decision made:")
+            print(f"   Symbol: {state['symbol']}")
             print(f"   Action: {recommendation['action']}")
             print(f"   Confidence: {recommendation.get('confidence', 'N/A')}")
             print(f"   Entry: ${risk_mgmt['entry']}")
@@ -183,20 +185,22 @@ Respond ONLY with JSON:
             print(f"   Take Profit: ${risk_mgmt['take_profit']} (+{risk_mgmt['tp_distance_percentage']}%)")
             print(f"   R/R: 1:{risk_mgmt['risk_reward_ratio']}")
         else:
-            recommendation['strategy'] = 'minimal_e725'
-            print(f"\n✅ [MINIMAL_E725] Decision made:")
+            recommendation['strategy'] = 'sol_fast'
+            recommendation['symbol'] = state['symbol']  # Add symbol
+            print(f"\n✅ [SOL_FAST] Decision made:")
+            print(f"   Symbol: {state['symbol']}")
             print(f"   Action: {recommendation['action']}")
             print(f"   Reasoning: {recommendation.get('reasoning', 'N/A')}")
         
         # Only update recommendation, don't return full state (for parallel execution)
-        return {"recommendation_minimal_e725": recommendation}
+        return {"recommendation_sol_fast": recommendation}
         
     except json.JSONDecodeError as e:
         error_msg = f"Error parsing AI response: {str(e)}"
         print(f"❌ {error_msg}")
-        return {"recommendation_minimal_e725": None}
+        return {"recommendation_sol_fast": None}
     except Exception as e:
-        error_msg = f"Error making decision (minimal_e725): {str(e)}"
+        error_msg = f"Error making decision (sol_fast): {str(e)}"
         print(f"❌ {error_msg}")
-        return {"recommendation_minimal_e725": None}
+        return {"recommendation_sol_fast": None}
 

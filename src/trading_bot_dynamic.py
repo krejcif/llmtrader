@@ -11,6 +11,7 @@ from agents.news_collector import collect_stock_news
 from agents.btc_collector import collect_btc_data
 from agents.ixic_collector import collect_ixic_data
 from agents.paper_trading import execute_paper_trade
+from agents.live_trading import execute_live_trade
 from utils.database import TradingDatabase
 from utils.binance_client import BinanceClient
 from strategy_config import get_active_strategies, get_all_intervals, get_min_interval, get_strategies_by_interval
@@ -237,6 +238,9 @@ class DynamicTradingBot:
         # Each thread gets its own copy of base state
         thread_state = deepcopy(base_state)
         
+        # Set strategy-specific symbol (Fáze 2: multi-symbol support)
+        thread_state['symbol'] = strategy.symbol
+        
         # Run strategy (modifies thread_state)
         result_state = self.run_strategy(strategy, thread_state)
         
@@ -249,8 +253,14 @@ class DynamicTradingBot:
         
         strategy_result = {
             'strategy_name': strategy.name,
+            'symbol': strategy.symbol,  # Include symbol for multi-symbol support
             'data': {key: result_state.get(key) for key in strategy_keys if key in result_state}
         }
+        
+        # IMPORTANT: Add symbol to recommendation so paper_trading knows which symbol to trade
+        rec_key = f'recommendation_{strategy.name}'
+        if rec_key in strategy_result['data'] and strategy_result['data'][rec_key]:
+            strategy_result['data'][rec_key]['symbol'] = strategy.symbol
         
         return strategy_result
     
@@ -316,17 +326,42 @@ class DynamicTradingBot:
             print(f"\n⚡ All strategies completed in {elapsed:.2f}s (parallel execution)")
             self.logger.info(f"Parallel execution completed in {elapsed:.2f}s")
             
+            # DEBUG: Show what recommendations are in state
+            print(f"\n🔍 DEBUG: Recommendations in state:")
+            for key, value in state.items():
+                if key.startswith('recommendation_'):
+                    strategy_name = key.replace('recommendation_', '')
+                    action = value.get('action', 'UNKNOWN') if value else 'None'
+                    print(f"   {strategy_name}: {action}")
+            
             # Execute trades for all strategies
             print(f"\n💼 Executing trades...")
+            
+            # PAPER TRADING (always runs)
+            print(f"\n📝 Paper Trading:")
             state = execute_paper_trade(state)
+            
+            # LIVE TRADING (only if enabled)
+            if config.ENABLE_LIVE_TRADING:
+                print(f"\n💰 Live Trading (ENABLED - Real Money!):")
+                print(f"   Position size: ${config.LIVE_POSITION_SIZE} per trade")
+                state = execute_live_trade(state)
+            else:
+                print(f"\n💰 Live Trading: DISABLED")
+                print(f"   (Set ENABLE_LIVE_TRADING=true in .env to enable)")
             
             # Trade execution summary
             if state.get('trade_execution', {}).get('executed'):
                 trades = state['trade_execution'].get('trades', [])
-                print(f"\n✅ {len(trades)} trade(s) executed:")
+                is_live = state['trade_execution'].get('live', False)
+                trade_type = "LIVE" if is_live else "PAPER"
+                
+                print(f"\n✅ {len(trades)} {trade_type} trade(s) executed:")
                 for trade_info in trades:
-                    print(f"   [{trade_info['strategy'].upper()}] {trade_info['trade_id']}")
-                    self.logger.info(f"Trade created [{trade_info['strategy'].upper()}]: {trade_info['trade_id']} - {trade_info['action']}")
+                    binance_ids = trade_info.get('binance_order_ids', [])
+                    binance_info = f" | Binance: {binance_ids}" if binance_ids else ""
+                    print(f"   [{trade_info['strategy'].upper()}] {trade_info['trade_id']}{binance_info}")
+                    self.logger.info(f"{trade_type} Trade created [{trade_info['strategy'].upper()}]: {trade_info['trade_id']} - {trade_info['action']}")
                 self.trades_created += len(trades)
             else:
                 print(f"\nℹ️  No trades executed (all NEUTRAL)")
@@ -491,8 +526,13 @@ class DynamicTradingBot:
         print(f"\n🔄 Bot will:")
         print(f"  1. Run strategies at exact UTC time marks (synchronized with Binance candle closes)")
         print(f"  2. Monitor open trades every {self.monitor_interval} seconds")
-        print(f"  3. Auto-execute paper trades on LONG/SHORT signals")
-        print(f"  4. Auto-close trades when SL/TP hit")
+        print(f"  3. Auto-execute PAPER trades on LONG/SHORT signals (always)")
+        if config.ENABLE_LIVE_TRADING:
+            print(f"  4. Auto-execute LIVE trades (REAL MONEY - ${config.LIVE_POSITION_SIZE} per trade) ⚠️")
+            print(f"  5. Auto-close trades when SL/TP hit (via Binance orders)")
+        else:
+            print(f"  4. LIVE trading: DISABLED (paper trading only)")
+            print(f"  5. Auto-close paper trades when SL/TP hit")
         print(f"\n⏹️  Press Ctrl+C to stop gracefully")
         print(f"📁 Logs: logs/trading_bot.log")
         print(f"{'='*70}\n")

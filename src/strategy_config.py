@@ -1,15 +1,18 @@
 """Strategy Configuration System - Flexible multi-strategy setup"""
 
-from agents.decision_minimal import make_decision_minimal
-from agents.decision_minimal_e725 import make_decision_minimal_e725
-from agents.decision_minimalbtc import make_decision_minimalbtc
-from agents.decision_macro import make_decision_macro
-from agents.decision_intraday import make_decision_intraday
+from agents.decision_sol import make_decision_sol
+from agents.decision_sol_fast import make_decision_sol_fast
+from agents.decision_eth import make_decision_eth
+from agents.decision_eth_fast import make_decision_eth_fast
 from agents.decision_example import make_decision_example
 
 # Analysis functions
 from agents.analysis_generic import analyze_market_generic
-from agents.analysis_minimal_e725 import analyze_market_minimal_e725
+from agents.analysis_sol_fast import analyze_market_sol_fast
+from agents.analysis_eth_fast import analyze_market_eth_fast
+
+# Import config for default symbol
+import config
 
 
 class StrategyConfig:
@@ -17,7 +20,7 @@ class StrategyConfig:
     
     def __init__(self, name: str, decision_func, timeframe_higher: str, 
                  timeframe_lower: str, interval_minutes: int, enabled: bool = True,
-                 analysis_func=None):
+                 analysis_func=None, symbol: str = None):
         """
         Initialize strategy configuration
         
@@ -29,8 +32,10 @@ class StrategyConfig:
             interval_minutes: How often to run this strategy in minutes
             enabled: Whether strategy is active
             analysis_func: Optional custom analysis function (defaults to analyze_market_generic)
+            symbol: Trading symbol (e.g., 'SOLUSDT', 'BTCUSDT'). Defaults to config.SYMBOL
         """
         self.name = name
+        self.symbol = symbol if symbol is not None else config.SYMBOL
         self.decision_func = decision_func
         self.analysis_func = analysis_func if analysis_func else analyze_market_generic
         self.timeframe_higher = timeframe_higher
@@ -45,7 +50,7 @@ class StrategyConfig:
         self.recommendation_key = f"recommendation_{name}"
     
     def __repr__(self):
-        return (f"StrategyConfig(name={self.name}, tf={self.timeframe_higher}/{self.timeframe_lower}, "
+        return (f"StrategyConfig(name={self.name}, symbol={self.symbol}, tf={self.timeframe_higher}/{self.timeframe_lower}, "
                 f"interval={self.interval_minutes}min, enabled={self.enabled})")
 
 
@@ -54,54 +59,47 @@ class StrategyConfig:
 # =============================================================================
 
 STRATEGIES = [
-    # Minimal strategy - 1h/15m, runs every 15 min (EMA 20/50)
+    # Sol strategy - 1h/15m, runs every 15 min (EMA 20/50 for SOLUSDT)
     StrategyConfig(
-        name="minimal",
-        decision_func=make_decision_minimal,
+        name="sol",
+        decision_func=make_decision_sol,
         timeframe_higher="1h",
         timeframe_lower="15m",
         interval_minutes=15,
         enabled=True
     ),
     
-    # Minimal E725 strategy - 1h/15m, runs every 15 min (EMA 7/25 - faster response)
+    # Sol Fast strategy - 1h/15m, runs every 15 min (EMA 7/25 for SOLUSDT - faster response)
     StrategyConfig(
-        name="minimal_e725",
-        decision_func=make_decision_minimal_e725,
-        analysis_func=analyze_market_minimal_e725,
+        name="sol_fast",
+        decision_func=make_decision_sol_fast,
+        analysis_func=analyze_market_sol_fast,
         timeframe_higher="1h",
         timeframe_lower="15m",
         interval_minutes=15,
         enabled=True
     ),
     
-    # MinimalBTC strategy - 1h/15m, runs every 15 min
+    # ETH strategy - 1h/15m, runs every 15 min (EMA 20/50 for ETHUSDT)
     StrategyConfig(
-        name="minimalbtc",
-        decision_func=make_decision_minimalbtc,
+        name="eth",
+        symbol="ETHUSDT",
+        decision_func=make_decision_eth,
         timeframe_higher="1h",
         timeframe_lower="15m",
         interval_minutes=15,
         enabled=True
     ),
     
-    # Macro strategy - 4h/1h (bigger picture), runs every 15 min
+    # ETH Fast strategy - 1h/15m, runs every 15 min (EMA 7/25 for ETHUSDT)
     StrategyConfig(
-        name="macro",
-        decision_func=make_decision_macro,
-        timeframe_higher="4h",
-        timeframe_lower="1h",
+        name="eth_fast",
+        symbol="ETHUSDT",
+        decision_func=make_decision_eth_fast,
+        analysis_func=analyze_market_eth_fast,
+        timeframe_higher="1h",
+        timeframe_lower="15m",
         interval_minutes=15,
-        enabled=True
-    ),
-    
-    # Intraday strategy - 15m/5m, runs every 5 min
-    StrategyConfig(
-        name="intraday",
-        decision_func=make_decision_intraday,
-        timeframe_higher="15m",
-        timeframe_lower="5m",
-        interval_minutes=5,
         enabled=True
     ),
     

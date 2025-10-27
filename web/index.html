@@ -229,17 +229,17 @@
             align-self: center;
         }
         
-        .badge-minimal {
+        .badge-sol {
             background: #fef3c7;
             color: #92400e;
         }
         
-        .badge-minimal-e725 {
+        .badge-sol-e725 {
             background: #dbeafe;
             color: #1e40af;
         }
         
-        .badge-minimalbtc {
+        .badge-solbtc {
             background: #ffedd5;
             color: #c2410c;
         }
@@ -473,114 +473,92 @@
                 </div>
             </div>
             
-            <!-- Minimal (EMA 20/50) -->
-            <div class="stat-card" onclick="window.location.href='/strategy?strategy=minimal'">
-                <h3>🤖 Minimal</h3>
-                <div class="stat-value" id="minimalWinRate">--</div>
+            <!-- Sol (EMA 20/50) -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=sol'">
+                <h3 id="solTitle"><span class="crypto-icon sol">◎</span>SOL</h3>
+                <div class="stat-value" id="solWinRate">--</div>
                 <div class="stat-label">Win Rate</div>
                 <div class="stat-details">
                     <div class="stat-row">
                         <span class="stat-row-label">Wins/Losses</span>
-                        <span class="stat-row-value" id="minimalWinLoss">--</span>
+                        <span class="stat-row-value" id="solWinLoss">--</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-row-label">P&L</span>
-                        <span class="stat-row-value" id="minimalPnL">$--</span>
+                        <span class="stat-row-value" id="solPnL">$--</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-row-label">Profit Factor</span>
-                        <span class="stat-row-value" id="minimalPF">--</span>
+                        <span class="stat-row-value" id="solPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-minimal">AI Free (EMA 20/50)</span>
+                <span class="strategy-badge badge-sol">AI Free (EMA 20/50)</span>
             </div>
             
-            <!-- Minimal E725 (EMA 7/25) -->
-            <div class="stat-card" onclick="window.location.href='/strategy?strategy=minimal_e725'">
-                <h3>⚡ Minimal E725</h3>
-                <div class="stat-value" id="minimal_e725WinRate">--</div>
+            <!-- Sol Fast (EMA 7/25) -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=sol_fast'">
+                <h3 id="sol_fastTitle"><span class="crypto-icon sol">◎</span>SOL Fast</h3>
+                <div class="stat-value" id="sol_fastWinRate">--</div>
                 <div class="stat-label">Win Rate</div>
                 <div class="stat-details">
                     <div class="stat-row">
                         <span class="stat-row-label">Wins/Losses</span>
-                        <span class="stat-row-value" id="minimal_e725WinLoss">--</span>
+                        <span class="stat-row-value" id="sol_fastWinLoss">--</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-row-label">P&L</span>
-                        <span class="stat-row-value" id="minimal_e725PnL">$--</span>
+                        <span class="stat-row-value" id="sol_fastPnL">$--</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-row-label">Profit Factor</span>
-                        <span class="stat-row-value" id="minimal_e725PF">--</span>
+                        <span class="stat-row-value" id="sol_fastPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-minimal-e725">AI Fast (EMA 7/25)</span>
+                <span class="strategy-badge badge-sol-e725">AI Fast (EMA 7/25)</span>
             </div>
             
-            <!-- MinimalBTC -->
-            <div class="stat-card" onclick="window.location.href='/strategy?strategy=minimalbtc'">
-                <h3>₿ MinimalBTC</h3>
-                <div class="stat-value" id="minimalbtcWinRate">--</div>
+            <!-- ETH -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=eth'">
+                <h3 id="ethTitle"><span class="crypto-icon eth">Ξ</span>ETH</h3>
+                <div class="stat-value" id="ethWinRate">--</div>
                 <div class="stat-label">Win Rate</div>
                 <div class="stat-details">
                     <div class="stat-row">
                         <span class="stat-row-label">Wins/Losses</span>
-                        <span class="stat-row-value" id="minimalbtcWinLoss">--</span>
+                        <span class="stat-row-value" id="ethWinLoss">--</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-row-label">P&L</span>
-                        <span class="stat-row-value" id="minimalbtcPnL">$--</span>
+                        <span class="stat-row-value" id="ethPnL">$--</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-row-label">Profit Factor</span>
-                        <span class="stat-row-value" id="minimalbtcPF">--</span>
+                        <span class="stat-row-value" id="ethPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-minimalbtc">AI + BTC Context</span>
+                <span class="strategy-badge badge-eth">AI ETH (EMA 20/50)</span>
             </div>
             
-            <!-- Macro -->
-            <div class="stat-card" onclick="window.location.href='/strategy?strategy=macro'">
-                <h3>🌍 Macro</h3>
-                <div class="stat-value" id="macroWinRate">--</div>
+            <!-- ETH Fast -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=eth_fast'">
+                <h3 id="eth_fastTitle"><span class="crypto-icon eth">Ξ</span>ETH Fast</h3>
+                <div class="stat-value" id="eth_fastWinRate">--</div>
                 <div class="stat-label">Win Rate</div>
                 <div class="stat-details">
                     <div class="stat-row">
                         <span class="stat-row-label">Wins/Losses</span>
-                        <span class="stat-row-value" id="macroWinLoss">--</span>
+                        <span class="stat-row-value" id="eth_fastWinLoss">--</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-row-label">P&L</span>
-                        <span class="stat-row-value" id="macroPnL">$--</span>
+                        <span class="stat-row-value" id="eth_fastPnL">$--</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-row-label">Profit Factor</span>
-                        <span class="stat-row-value" id="macroPF">--</span>
+                        <span class="stat-row-value" id="eth_fastPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-macro">News + IXIC</span>
-            </div>
-            
-            <!-- Intraday -->
-            <div class="stat-card" onclick="window.location.href='/strategy?strategy=intraday'">
-                <h3>⚡ Intraday</h3>
-                <div class="stat-value" id="intradayWinRate">--</div>
-                <div class="stat-label">Win Rate</div>
-                <div class="stat-details">
-                    <div class="stat-row">
-                        <span class="stat-row-label">Wins/Losses</span>
-                        <span class="stat-row-value" id="intradayWinLoss">--</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">P&L</span>
-                        <span class="stat-row-value" id="intradayPnL">$--</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Profit Factor</span>
-                        <span class="stat-row-value" id="intradayPF">--</span>
-                    </div>
-                </div>
-                <span class="strategy-badge badge-intraday">Scalping 5m</span>
+                <span class="strategy-badge badge-eth-fast">AI ETH Fast (EMA 7/25)</span>
             </div>
         </div>
         
@@ -599,11 +577,10 @@
             <!-- Filters -->
             <div class="filters">
                 <button class="filter-btn active" data-filter="all">All Trades</button>
-                <button class="filter-btn" data-filter="minimal">🤖 Minimal</button>
-                <button class="filter-btn" data-filter="minimal_e725">⚡ E725</button>
-                <button class="filter-btn" data-filter="minimalbtc">₿ MinimalBTC</button>
-                <button class="filter-btn" data-filter="macro">🌍 Macro</button>
-                <button class="filter-btn" data-filter="intraday">⚡ Intraday</button>
+                <button class="filter-btn" data-filter="sol"><span class="crypto-icon sol">◎</span>SOL</button>
+                <button class="filter-btn" data-filter="sol_fast"><span class="crypto-icon sol">◎</span>SOL Fast</button>
+                <button class="filter-btn" data-filter="eth"><span class="crypto-icon eth">Ξ</span>ETH</button>
+                <button class="filter-btn" data-filter="eth_fast"><span class="crypto-icon eth">Ξ</span>ETH Fast</button>
                 <button class="filter-btn" data-filter="open">⏳ Open</button>
                 <button class="filter-btn" data-filter="closed">✅ Closed</button>
             </div>
@@ -797,6 +774,9 @@
                 const response = await fetch('/api/stats');
                 const data = await response.json();
                 
+                // Store strategy symbols for later use (Fáze 2: multi-symbol support)
+                window.strategySymbols = data.strategy_symbols || {};
+                
                 // Overall
                 document.getElementById('overallWinRate').textContent = 
                     data.overall.closed_trades > 0 ? `${data.overall.win_rate.toFixed(1)}%` : 'N/A';
@@ -809,64 +789,60 @@
                     data.overall.closed_trades > 0 ? `${data.overall.profit_factor.toFixed(2)}` : 'N/A';
                 
                 // Minimal
-                const m = data.strategies.minimal || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
-                document.getElementById('minimalWinRate').textContent = 
+                const m = data.strategies.sol || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                const solSymbol = window.strategySymbols['sol'] || 'SOLUSDT';
+                document.getElementById('solTitle').innerHTML = `<span class="crypto-icon sol">◎</span>SOL (${solSymbol})`;
+                document.getElementById('solWinRate').textContent = 
                     m.closed_trades > 0 ? `${m.win_rate.toFixed(1)}%` : 'N/A';
-                document.getElementById('minimalWinLoss').textContent = 
+                document.getElementById('solWinLoss').textContent = 
                     `${m.wins}/${m.losses}`;
-                const minimalPnL = document.getElementById('minimalPnL');
-                minimalPnL.textContent = `$${m.total_pnl.toFixed(2)}`;
-                minimalPnL.style.color = m.total_pnl >= 0 ? '#10b981' : '#ef4444';
-                document.getElementById('minimalPF').textContent = 
+                const solPnL = document.getElementById('solPnL');
+                solPnL.textContent = `$${m.total_pnl.toFixed(2)}`;
+                solPnL.style.color = m.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('solPF').textContent = 
                     m.closed_trades > 0 ? `${m.profit_factor.toFixed(2)}` : 'N/A';
                 
-                // Minimal E725
-                const me = data.strategies.minimal_e725 || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
-                document.getElementById('minimal_e725WinRate').textContent = 
+                // Sol Fast
+                const me = data.strategies.sol_fast || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                const sol_fastSymbol = window.strategySymbols['sol_fast'] || 'SOLUSDT';
+                document.getElementById('sol_fastTitle').innerHTML = `<span class="crypto-icon sol">◎</span>SOL Fast (${sol_fastSymbol})`;
+                document.getElementById('sol_fastWinRate').textContent = 
                     me.closed_trades > 0 ? `${me.win_rate.toFixed(1)}%` : 'N/A';
-                document.getElementById('minimal_e725WinLoss').textContent = 
+                document.getElementById('sol_fastWinLoss').textContent = 
                     `${me.wins}/${me.losses}`;
-                const minimal_e725PnL = document.getElementById('minimal_e725PnL');
-                minimal_e725PnL.textContent = `$${me.total_pnl.toFixed(2)}`;
-                minimal_e725PnL.style.color = me.total_pnl >= 0 ? '#10b981' : '#ef4444';
-                document.getElementById('minimal_e725PF').textContent = 
+                const sol_fastPnL = document.getElementById('sol_fastPnL');
+                sol_fastPnL.textContent = `$${me.total_pnl.toFixed(2)}`;
+                sol_fastPnL.style.color = me.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('sol_fastPF').textContent = 
                     me.closed_trades > 0 ? `${me.profit_factor.toFixed(2)}` : 'N/A';
                 
-                // MinimalBTC
-                const mbtc = data.strategies.minimalbtc || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
-                document.getElementById('minimalbtcWinRate').textContent = 
-                    mbtc.closed_trades > 0 ? `${mbtc.win_rate.toFixed(1)}%` : 'N/A';
-                document.getElementById('minimalbtcWinLoss').textContent = 
-                    `${mbtc.wins}/${mbtc.losses}`;
-                const minimalbtcPnL = document.getElementById('minimalbtcPnL');
-                minimalbtcPnL.textContent = `$${mbtc.total_pnl.toFixed(2)}`;
-                minimalbtcPnL.style.color = mbtc.total_pnl >= 0 ? '#10b981' : '#ef4444';
-                document.getElementById('minimalbtcPF').textContent = 
-                    mbtc.closed_trades > 0 ? `${mbtc.profit_factor.toFixed(2)}` : 'N/A';
+                // ETH
+                const eth = data.strategies.eth || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                const ethSymbol = window.strategySymbols['eth'] || 'ETHUSDT';
+                document.getElementById('ethTitle').innerHTML = `<span class="crypto-icon eth">Ξ</span>ETH (${ethSymbol})`;
+                document.getElementById('ethWinRate').textContent = 
+                    eth.closed_trades > 0 ? `${eth.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('ethWinLoss').textContent = 
+                    `${eth.wins}/${eth.losses}`;
+                const ethPnL = document.getElementById('ethPnL');
+                ethPnL.textContent = `$${eth.total_pnl.toFixed(2)}`;
+                ethPnL.style.color = eth.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('ethPF').textContent = 
+                    eth.closed_trades > 0 ? `${eth.profit_factor.toFixed(2)}` : 'N/A';
                 
-                // Macro
-                const ma = data.strategies.macro;
-                document.getElementById('macroWinRate').textContent = 
-                    ma.closed_trades > 0 ? `${ma.win_rate.toFixed(1)}%` : 'N/A';
-                document.getElementById('macroWinLoss').textContent = 
-                    `${ma.wins}/${ma.losses}`;
-                const macroPnL = document.getElementById('macroPnL');
-                macroPnL.textContent = `$${ma.total_pnl.toFixed(2)}`;
-                macroPnL.style.color = ma.total_pnl >= 0 ? '#10b981' : '#ef4444';
-                document.getElementById('macroPF').textContent = 
-                    ma.closed_trades > 0 ? `${ma.profit_factor.toFixed(2)}` : 'N/A';
-                
-                // Intraday
-                const id = data.strategies.intraday || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
-                document.getElementById('intradayWinRate').textContent = 
-                    id.closed_trades > 0 ? `${id.win_rate.toFixed(1)}%` : 'N/A';
-                document.getElementById('intradayWinLoss').textContent = 
-                    `${id.wins}/${id.losses}`;
-                const intradayPnL = document.getElementById('intradayPnL');
-                intradayPnL.textContent = `$${id.total_pnl.toFixed(2)}`;
-                intradayPnL.style.color = id.total_pnl >= 0 ? '#10b981' : '#ef4444';
-                document.getElementById('intradayPF').textContent = 
-                    id.closed_trades > 0 ? `${id.profit_factor.toFixed(2)}` : 'N/A';
+                // ETH Fast
+                const ethFast = data.strategies.eth_fast || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                const ethFastSymbol = window.strategySymbols['eth_fast'] || 'ETHUSDT';
+                document.getElementById('eth_fastTitle').innerHTML = `<span class="crypto-icon eth">Ξ</span>ETH Fast (${ethFastSymbol})`;
+                document.getElementById('eth_fastWinRate').textContent = 
+                    ethFast.closed_trades > 0 ? `${ethFast.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('eth_fastWinLoss').textContent = 
+                    `${ethFast.wins}/${ethFast.losses}`;
+                const ethFastPnL = document.getElementById('eth_fastPnL');
+                ethFastPnL.textContent = `$${ethFast.total_pnl.toFixed(2)}`;
+                ethFastPnL.style.color = ethFast.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('eth_fastPF').textContent = 
+                    ethFast.closed_trades > 0 ? `${ethFast.profit_factor.toFixed(2)}` : 'N/A';
                 
                 
             } catch (error) {
@@ -907,11 +883,21 @@
                 }
                 
                 tbody.innerHTML = data.trades.map(trade => {
-                    const strategyIcon = trade.strategy === 'structured' ? '📐' : 
-                                       trade.strategy === 'minimal' ? '🤖' : 
-                                       trade.strategy === 'minimalbtc' ? '₿' : 
-                                       trade.strategy === 'macro' ? '🌍' : 
-                                       trade.strategy === 'intraday' ? '⚡' : '🔄';
+                    // Generate colored crypto icons
+                    let strategyIcon = '';
+                    if (trade.strategy === 'sol' || trade.strategy === 'sol_fast') {
+                        strategyIcon = '<span class="crypto-icon sol">◎</span>';
+                    } else if (trade.strategy === 'eth' || trade.strategy === 'eth_fast') {
+                        strategyIcon = '<span class="crypto-icon eth">Ξ</span>';
+                    } else {
+                        strategyIcon = '🔄';
+                    }
+                    
+                    const strategyName = trade.strategy === 'sol' ? 'SOL' :
+                                        trade.strategy === 'sol_fast' ? 'SOL Fast' :
+                                        trade.strategy === 'eth' ? 'ETH' :
+                                        trade.strategy === 'eth_fast' ? 'ETH Fast' :
+                                        trade.strategy.toUpperCase();
                     const statusClass = trade.status === 'OPEN' ? 'status-open' : 'status-closed';
                     
                     // P&L display logic
@@ -973,7 +959,7 @@
                     
                     return `
                         <tr>
-                            <td>${strategyIcon} ${trade.strategy.toUpperCase()}</td>
+                            <td>${strategyIcon}${strategyName}</td>
                             <td><strong>${trade.action}</strong></td>
                             <td>$${trade.entry_price.toFixed(2)}</td>
                             <td>$${trade.stop_loss.toFixed(2)} / $${trade.take_profit.toFixed(2)}</td>

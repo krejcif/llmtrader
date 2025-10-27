@@ -345,34 +345,54 @@ tbody tr:hover td {
     border: 1px solid;
 }
 
-.badge-minimal {
+.badge-sol {
     background: #064e3b;
     color: #6ee7b7;
     border-color: #10b981;
 }
 
-.badge-minimal-e725 {
+.badge-sol-fast {
     background: #1e3a8a;
     color: #93c5fd;
     border-color: #3b82f6;
 }
 
-.badge-minimalbtc {
-    background: #78350f;
-    color: #fcd34d;
-    border-color: #f59e0b;
-}
-
-.badge-macro {
-    background: #312e81;
-    color: #a5b4fc;
+.badge-eth {
+    background: #1e40af;
+    color: #c7d2fe;
     border-color: #6366f1;
 }
 
-.badge-intraday {
-    background: #831843;
-    color: #f9a8d4;
-    border-color: #ec4899;
+.badge-eth-fast {
+    background: #4c1d95;
+    color: #ddd6fe;
+    border-color: #8b5cf6;
+}
+
+/* Crypto Icon Badges for Strategy Display */
+.crypto-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.crypto-icon.sol {
+    background: linear-gradient(135deg, #00FFA3, #03E1FF, #DC1FFF);
+    color: #000;
+    box-shadow: 0 0 8px rgba(220, 31, 255, 0.5);
+}
+
+.crypto-icon.eth {
+    background: linear-gradient(135deg, #627EEA, #8A92B2);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(98, 126, 234, 0.5);
 }
 
 .badge.long {

@@ -113,15 +113,19 @@ Respond ONLY with JSON:
             
             recommendation['risk_management'] = risk_mgmt
             recommendation['strategy'] = 'example'
+            recommendation['symbol'] = state['symbol']  # Add symbol
             
             print(f"\n✅ [EXAMPLE] Decision: {recommendation['action']} ({recommendation.get('confidence', 'N/A')})")
+            print(f"   Symbol: {state['symbol']}")
             print(f"   Entry: ${risk_mgmt['entry']}")
             print(f"   Stop Loss: ${risk_mgmt['stop_loss']} (-{risk_mgmt['stop_distance_percentage']}%)")
             print(f"   Take Profit: ${risk_mgmt['take_profit']} (+{risk_mgmt['tp_distance_percentage']}%)")
             print(f"   R/R: 1:{risk_mgmt['risk_reward_ratio']}")
         else:
             recommendation['strategy'] = 'example'
+            recommendation['symbol'] = state['symbol']  # Add symbol
             print(f"\n✅ [EXAMPLE] Decision: {recommendation['action']}")
+            print(f"   Symbol: {state['symbol']}")
             print(f"   Reasoning: {recommendation.get('reasoning', 'N/A')}")
         
         return {"recommendation_example": recommendation}

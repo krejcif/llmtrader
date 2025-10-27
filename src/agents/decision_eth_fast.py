@@ -1,4 +1,4 @@
-"""Decision Agent - Minimal prompt version (AI decides independently)"""
+"""Decision Agent - ETH Fast (EMA 7/25 for ETHUSDT)"""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -10,54 +10,18 @@ import config
 import json
 
 
-def make_decision_minimal(state: TradingState) -> TradingState:
+def make_decision_eth_fast(state: TradingState) -> TradingState:
     """
-    Make trading decision using MINIMAL prompt (AI decides independently)
+    Make trading decision using MINIMAL prompt with EMA 7/25 for ETH
     
     Args:
         state: Current trading state with market data and analysis
         
     Returns:
-        Updated state with trading recommendation (minimal strategy)
+        Updated state with trading recommendation (eth_fast strategy)
     """
     
-    # 🚨 TEMPORARY: FORCE LONG FOR TESTING PAPER TRADING 🚨
-    FORCE_LONG_TEST = False  # Set to True to test paper trading
-    
-    if FORCE_LONG_TEST:
-        print(f"\n⚠️  [MINIMAL STRATEGY - TEST MODE] FORCING LONG for paper trading test!")
-        
-        # Get market data for risk management
-        market_data = state.get('market_data')
-        analysis = state.get('analysis')
-        
-        if not market_data or not analysis:
-            return {"recommendation_minimal": None}
-        
-        indicators = analysis['indicators']
-        tf_lower = indicators['lower_tf']['timeframe']
-        candles_lower = market_data['timeframes'][tf_lower]
-        
-        risk_mgmt = calculate_stop_take_profit(candles_lower, 'bullish')
-        
-        recommendation = {
-            'action': 'LONG',
-            'confidence': 'high',
-            'reasoning': 'TEST MODE - Forced LONG to test paper trading execution',
-            'risk_management': risk_mgmt,
-            'strategy': 'minimal'
-        }
-        
-        print(f"✅ [MINIMAL - TEST] Forced LONG decision:")
-        print(f"   Entry: ${risk_mgmt['entry']}")
-        print(f"   Stop Loss: ${risk_mgmt['stop_loss']}")
-        print(f"   Take Profit: ${risk_mgmt['take_profit']}")
-        print(f"   R/R: 1:{risk_mgmt['risk_reward_ratio']}")
-        
-        return {"recommendation_minimal": recommendation}
-    
-    # Normal flow (when FORCE_LONG_TEST = False)
-    print(f"\n🤖 [MINIMAL STRATEGY] Making decision with DeepSeek AI...")
+    print(f"\n🤖 [ETH_FAST STRATEGY] Making decision with DeepSeek AI (EMA 7/25)...")
     
     try:
         # Check if we have analysis data
@@ -81,7 +45,7 @@ def make_decision_minimal(state: TradingState) -> TradingState:
             base_url=config.DEEPSEEK_BASE_URL
         )
         
-        # MINIMAL PROMPT - Just data, no rules
+        # MINIMAL PROMPT - Just data, no rules (EMA 7/25)
         prompt = f"""You are a professional crypto trader analyzing {state['symbol']}.
 
 CURRENT PRICE: ${market_data['current_price']}
@@ -89,7 +53,7 @@ CURRENT PRICE: ${market_data['current_price']}
 === HIGHER TIMEFRAME ({tf_higher}) ===
 RSI: {ind_higher['rsi']['value']} ({ind_higher['rsi']['signal']})
 MACD: value={ind_higher['macd']['macd']}, signal={ind_higher['macd']['signal_line']}, histogram={ind_higher['macd']['histogram']}, trend={ind_higher['macd']['signal']}
-EMA: 20={ind_higher['ema']['ema_20']}, 50={ind_higher['ema']['ema_50']}, trend={ind_higher['ema']['trend']}
+EMA: 7={ind_higher['ema']['ema_7']}, 25={ind_higher['ema']['ema_25']}, trend={ind_higher['ema']['trend']}
 Bollinger Bands: upper={ind_higher['bollinger_bands']['upper']}, middle={ind_higher['bollinger_bands']['middle']}, lower={ind_higher['bollinger_bands']['lower']}, position={ind_higher['bollinger_bands']['position']}
 Support/Resistance: support=${ind_higher['support_resistance']['nearest_support']}, resistance=${ind_higher['support_resistance']['nearest_resistance']}, position={ind_higher['support_resistance']['position']}
 Volume: trend={ind_higher['volume']['trend']}, vs_avg={ind_higher['volume']['current_vs_avg']}x
@@ -100,7 +64,7 @@ Pattern: {ind_higher['trend_pattern']['pattern']} ({ind_higher['trend_pattern'][
 RSI(14): {ind_lower['rsi']['value']} ({ind_lower['rsi']['signal']})
 RSI(7): {ind_lower['rsi_7']['value']} (turning: {ind_lower['rsi_7']['turning']}) ← Fast reversal signal
 MACD: value={ind_lower['macd']['macd']}, signal={ind_lower['macd']['signal_line']}, histogram={ind_lower['macd']['histogram']}, trend={ind_lower['macd']['signal']}
-EMA: 20={ind_lower['ema']['ema_20']}, 50={ind_lower['ema']['ema_50']}, trend={ind_lower['ema']['trend']}
+EMA: 7={ind_lower['ema']['ema_7']}, 25={ind_lower['ema']['ema_25']}, trend={ind_lower['ema']['trend']}
 Bollinger Bands: upper={ind_lower['bollinger_bands']['upper']}, middle={ind_lower['bollinger_bands']['middle']}, lower={ind_lower['bollinger_bands']['lower']}, position={ind_lower['bollinger_bands']['position']}, squeeze={ind_lower['bollinger_bands']['squeeze']}
 Support/Resistance: support=${ind_lower['support_resistance']['nearest_support']}, resistance=${ind_lower['support_resistance']['nearest_resistance']}, position={ind_lower['support_resistance']['position']}
 Volume: trend={ind_lower['volume']['trend']}, vs_avg={ind_lower['volume']['current_vs_avg']}x
@@ -127,7 +91,7 @@ Timeframe confluence: {analysis.get('confluence', 'unknown')}
 
 YOUR TASK:
 Based on ALL the above data, decide whether to go LONG, SHORT, or stay NEUTRAL.
-Use your trading expertise to weigh all factors.
+Use your trading expertise to weigh all factors. Note: This analysis uses faster EMAs (7/25) for more responsive signals.
 
 Respond ONLY with JSON:
 {{
@@ -209,9 +173,11 @@ Respond ONLY with JSON:
             risk_mgmt = calculate_stop_take_profit(candles_lower, direction)
             
             recommendation['risk_management'] = risk_mgmt
-            recommendation['strategy'] = 'minimal'  # Tag strategy
+            recommendation['strategy'] = 'eth_fast'  # Tag strategy
+            recommendation['symbol'] = state['symbol']  # Add symbol
             
-            print(f"\n✅ [MINIMAL] Decision made:")
+            print(f"\n✅ [ETH_FAST] Decision made:")
+            print(f"   Symbol: {state['symbol']}")
             print(f"   Action: {recommendation['action']}")
             print(f"   Confidence: {recommendation.get('confidence', 'N/A')}")
             print(f"   Entry: ${risk_mgmt['entry']}")
@@ -219,20 +185,22 @@ Respond ONLY with JSON:
             print(f"   Take Profit: ${risk_mgmt['take_profit']} (+{risk_mgmt['tp_distance_percentage']}%)")
             print(f"   R/R: 1:{risk_mgmt['risk_reward_ratio']}")
         else:
-            recommendation['strategy'] = 'minimal'
-            print(f"\n✅ [MINIMAL] Decision made:")
+            recommendation['strategy'] = 'eth_fast'
+            recommendation['symbol'] = state['symbol']  # Add symbol
+            print(f"\n✅ [ETH_FAST] Decision made:")
+            print(f"   Symbol: {state['symbol']}")
             print(f"   Action: {recommendation['action']}")
             print(f"   Reasoning: {recommendation.get('reasoning', 'N/A')}")
         
         # Only update recommendation, don't return full state (for parallel execution)
-        return {"recommendation_minimal": recommendation}
+        return {"recommendation_eth_fast": recommendation}
         
     except json.JSONDecodeError as e:
         error_msg = f"Error parsing AI response: {str(e)}"
         print(f"❌ {error_msg}")
-        return {"recommendation_minimal": None}
+        return {"recommendation_eth_fast": None}
     except Exception as e:
-        error_msg = f"Error making decision (minimal): {str(e)}"
+        error_msg = f"Error making decision (eth_fast): {str(e)}"
         print(f"❌ {error_msg}")
-        return {"recommendation_minimal": None}
+        return {"recommendation_eth_fast": None}
 

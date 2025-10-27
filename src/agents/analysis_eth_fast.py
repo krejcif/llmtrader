@@ -1,4 +1,4 @@
-"""Analysis for Minimal E725 Strategy - Custom EMA 7/25"""
+"""Analysis for ETH Fast Strategy - Custom EMA 7/25"""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,10 +14,10 @@ from utils.momentum_analysis import (
 )
 
 
-def analyze_market_minimal_e725(state: TradingState, strategy_name: str,
+def analyze_market_eth_fast(state: TradingState, strategy_name: str,
                                  tf_higher: str, tf_lower: str) -> TradingState:
     """
-    Market analysis for Minimal E725 strategy with custom EMA 7/25
+    Market analysis for ETH Fast strategy with custom EMA 7/25
     
     Args:
         state: Current trading state

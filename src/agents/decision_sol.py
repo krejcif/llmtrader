@@ -1,4 +1,4 @@
-"""Decision Agent - Minimal BTC version (with BTCUSDT orderbook context)"""
+"""Decision Agent - Sol prompt version (AI decides independently)"""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -10,54 +10,55 @@ import config
 import json
 
 
-def make_decision_minimalbtc(state: TradingState) -> TradingState:
+def make_decision_sol(state: TradingState) -> TradingState:
     """
-    Make trading decision using MINIMAL prompt with BTCUSDT orderbook context
+    Make trading decision using SOL prompt (AI decides independently)
     
     Args:
         state: Current trading state with market data and analysis
         
     Returns:
-        Updated state with trading recommendation (minimalbtc strategy)
+        Updated state with trading recommendation (sol strategy)
     """
     
-    # 🚨 TEMPORARY: FORCE SHORT FOR TESTING PAPER TRADING 🚨
-    FORCE_SHORT_TEST = False  # Set to True to test paper trading
+    # 🚨 TEMPORARY: FORCE LONG FOR TESTING PAPER TRADING 🚨
+    FORCE_LONG_TEST = False  # Set to True to test paper trading
     
-    if FORCE_SHORT_TEST:
-        print(f"\n⚠️  [MINIMALBTC STRATEGY - TEST MODE] FORCING SHORT for paper trading test!")
+    if FORCE_LONG_TEST:
+        print(f"\n⚠️  [SOL STRATEGY - TEST MODE] FORCING LONG for paper trading test!")
         
         # Get market data for risk management
         market_data = state.get('market_data')
         analysis = state.get('analysis')
         
         if not market_data or not analysis:
-            return {"recommendation_minimalbtc": None}
+            return {"recommendation_sol": None}
         
         indicators = analysis['indicators']
         tf_lower = indicators['lower_tf']['timeframe']
         candles_lower = market_data['timeframes'][tf_lower]
         
-        risk_mgmt = calculate_stop_take_profit(candles_lower, 'bearish')
+        risk_mgmt = calculate_stop_take_profit(candles_lower, 'bullish')
         
         recommendation = {
-            'action': 'SHORT',
+            'action': 'LONG',
             'confidence': 'high',
-            'reasoning': 'TEST MODE - Forced SHORT to test paper trading execution',
+            'reasoning': 'TEST MODE - Forced LONG to test paper trading execution',
             'risk_management': risk_mgmt,
-            'strategy': 'minimalbtc'
+            'strategy': 'sol',
+            'symbol': state['symbol']
         }
         
-        print(f"✅ [MINIMALBTC - TEST] Forced SHORT decision:")
+        print(f"✅ [SOL - TEST] Forced LONG decision:")
         print(f"   Entry: ${risk_mgmt['entry']}")
         print(f"   Stop Loss: ${risk_mgmt['stop_loss']}")
         print(f"   Take Profit: ${risk_mgmt['take_profit']}")
         print(f"   R/R: 1:{risk_mgmt['risk_reward_ratio']}")
         
-        return {"recommendation_minimalbtc": recommendation}
+        return {"recommendation_sol": recommendation}
     
-    # Normal flow (when FORCE_SHORT_TEST = False)
-    print(f"\n🤖 [MINIMALBTC STRATEGY] Making decision with DeepSeek AI + BTCUSDT context...")
+    # Normal flow (when FORCE_LONG_TEST = False)
+    print(f"\n🤖 [SOL STRATEGY] Making decision with DeepSeek AI...")
     
     try:
         # Check if we have analysis data
@@ -75,106 +76,13 @@ def make_decision_minimalbtc(state: TradingState) -> TradingState:
         orderbook = analysis['orderbook']
         sentiment = analysis['sentiment']
         
-        # Get BTCUSDT orderbook
-        btc_orderbook = None
-        try:
-            from utils.binance_client import BinanceClient
-            client = BinanceClient()
-            
-            btc_depth = client.client.get_order_book(symbol='BTCUSDT', limit=100)
-            
-            # Calculate BTC orderbook metrics
-            btc_bids = btc_depth['bids'][:20]
-            btc_asks = btc_depth['asks'][:20]
-            
-            btc_bid_volume = sum(float(price) * float(qty) for price, qty in btc_bids)
-            btc_ask_volume = sum(float(price) * float(qty) for price, qty in btc_asks)
-            btc_total_volume = btc_bid_volume + btc_ask_volume
-            
-            btc_bid_pct = (btc_bid_volume / btc_total_volume * 100) if btc_total_volume > 0 else 50
-            btc_ask_pct = (btc_ask_volume / btc_total_volume * 100) if btc_total_volume > 0 else 50
-            
-            btc_ratio = btc_bid_volume / btc_ask_volume if btc_ask_volume > 0 else 1
-            
-            if btc_ratio > 1.5:
-                btc_pressure = "strong bullish"
-            elif btc_ratio > 1.2:
-                btc_pressure = "bullish"
-            elif btc_ratio < 0.67:
-                btc_pressure = "strong bearish"
-            elif btc_ratio < 0.83:
-                btc_pressure = "bearish"
-            else:
-                btc_pressure = "neutral"
-            
-            btc_orderbook = {
-                'bid_percentage': btc_bid_pct,
-                'ask_percentage': btc_ask_pct,
-                'ratio': btc_ratio,
-                'pressure': btc_pressure
-            }
-            
-            print(f"   ✅ BTCUSDT orderbook loaded: {btc_pressure} (ratio {btc_ratio:.2f})")
-            
-        except Exception as e:
-            print(f"   ⚠️  Could not load BTCUSDT orderbook: {e}")
-            btc_orderbook = None
-        
         # Initialize DeepSeek client
         client = OpenAI(
             api_key=config.DEEPSEEK_API_KEY,
             base_url=config.DEEPSEEK_BASE_URL
         )
         
-        # Build dual orderbook section with confluence
-        orderbook_section = f"""
-=== ORDERBOOK ANALYSIS ===
-
-SOLUSDT Orderbook (Direct):
-• Bid/Ask: {orderbook['imbalance']['bid_percentage']:.1f}% / {orderbook['imbalance']['ask_percentage']:.1f}%
-• Imbalance ratio: {orderbook['imbalance']['ratio']:.2f}
-• Pressure: {orderbook['imbalance']['pressure']}
-• Spread: {orderbook['spread']['percentage']:.4f}%
-• Large orders: {orderbook['walls']['has_significant_walls']}
-"""
-        
-        if btc_orderbook:
-            # Calculate confluence
-            sol_ratio = orderbook['imbalance']['ratio']
-            btc_ratio = btc_orderbook['ratio']
-            
-            sol_bullish = sol_ratio > 1.2
-            sol_bearish = sol_ratio < 0.83
-            btc_bullish = btc_ratio > 1.2
-            btc_bearish = btc_ratio < 0.83
-            
-            if sol_bullish and btc_bullish:
-                confluence = "STRONG BULLISH (both orderbooks aligned)"
-            elif sol_bearish and btc_bearish:
-                confluence = "STRONG BEARISH (both orderbooks aligned)"
-            elif sol_bullish and btc_bearish:
-                confluence = "DIVERGENCE (SOL bullish but BTC bearish - CAUTION: BTC usually leads!)"
-            elif sol_bearish and btc_bullish:
-                confluence = "DIVERGENCE (SOL bearish but BTC bullish - possible SOL reversal incoming)"
-            elif sol_bullish or btc_bullish:
-                confluence = "MILD BULLISH (one orderbook bullish)"
-            elif sol_bearish or btc_bearish:
-                confluence = "MILD BEARISH (one orderbook bearish)"
-            else:
-                confluence = "NEUTRAL (both orderbooks neutral)"
-            
-            orderbook_section += f"""
-BTCUSDT Orderbook (Market Leader):
-• Bid/Ask: {btc_orderbook['bid_percentage']:.1f}% / {btc_orderbook['ask_percentage']:.1f}%
-• Imbalance ratio: {btc_orderbook['ratio']:.2f}
-• Pressure: {btc_orderbook['pressure']}
-
-CONFLUENCE ANALYSIS:
-• SOL ratio: {sol_ratio:.2f} | BTC ratio: {btc_ratio:.2f}
-• Overall: {confluence}
-"""
-        
-        # MINIMAL PROMPT - Just data, no rules + BTC context
+        # SOL PROMPT - Just data, no rules
         prompt = f"""You are a professional crypto trader analyzing {state['symbol']}.
 
 CURRENT PRICE: ${market_data['current_price']}
@@ -201,7 +109,13 @@ ATR: ${ind_lower['atr']['value']} ({ind_lower['atr']['percentage']}%)
 Pattern: {ind_lower['trend_pattern']['pattern']} ({ind_lower['trend_pattern']['trend_direction']})
 Market Condition: {ind_lower['market_condition']['condition']} (choppy_score: {ind_lower['market_condition']['choppy_score']}) - {ind_lower['market_condition']['warning'] or 'trending OK'}
 
-{orderbook_section}
+=== ORDERBOOK ===
+Bid/Ask: {orderbook['imbalance']['bid_percentage']:.1f}% / {orderbook['imbalance']['ask_percentage']:.1f}%
+Imbalance ratio: {orderbook['imbalance']['ratio']:.2f}
+Pressure: {orderbook['imbalance']['pressure']}
+Spread: {orderbook['spread']['percentage']:.4f}%
+Large orders present: {orderbook['walls']['has_significant_walls']}
+
 === MARKET CONTEXT ===
 Funding rate: {sentiment['funding_rate']:.6f} ({sentiment['funding_sentiment']})
 Volume momentum: {sentiment['volume_momentum']}
@@ -213,8 +127,8 @@ Timeframe confluence: {analysis.get('confluence', 'unknown')}
 {f"TREND REVERSAL: {analysis['reversal']['reversal_type']}, strength {analysis['reversal']['strength']}/100, confirmations: {analysis['reversal']['confirmation_count']}" if analysis.get('reversal', {}).get('reversal_detected') else "No trend reversal detected"}
 
 YOUR TASK:
-Based on ALL the above data (including BTC market context), decide whether to go LONG, SHORT, or stay NEUTRAL.
-Use your trading expertise to weigh all factors. Consider BTC orderbook pressure as it often leads altcoin moves.
+Based on ALL the above data, decide whether to go LONG, SHORT, or stay NEUTRAL.
+Use your trading expertise to weigh all factors.
 
 Respond ONLY with JSON:
 {{
@@ -251,6 +165,42 @@ Respond ONLY with JSON:
         if 'action' not in recommendation or recommendation['action'] not in ['LONG', 'SHORT', 'NEUTRAL']:
             raise ValueError("Invalid action in recommendation")
         
+        # 🛡️ GUARD RAIL #1: Check momentum alignment (last 2 candles)
+        # If AI recommendation is opposite to recent price momentum, override to NEUTRAL
+        if recommendation['action'] in ['LONG', 'SHORT']:
+            candles_lower = market_data['timeframes'][tf_lower]
+            
+            # Get last 3 closes to determine momentum
+            last_3_closes = candles_lower['close'].tail(3).tolist()
+            
+            if len(last_3_closes) >= 3:
+                # Check if last 2 candles are bullish or bearish
+                candle_1_bullish = last_3_closes[-1] > last_3_closes[-2]  # Most recent candle
+                candle_2_bullish = last_3_closes[-2] > last_3_closes[-3]  # Previous candle
+                
+                # Determine momentum (need at least 2 candles in same direction)
+                momentum_bullish = candle_1_bullish and candle_2_bullish
+                momentum_bearish = not candle_1_bullish and not candle_2_bullish
+                
+                original_action = recommendation['action']
+                override_reason = None
+                
+                # Check for misalignment
+                if recommendation['action'] == 'LONG' and momentum_bearish:
+                    recommendation['action'] = 'NEUTRAL'
+                    override_reason = f"AI suggested LONG, but last 2 candles are bearish ({last_3_closes[-3]:.2f} → {last_3_closes[-2]:.2f} → {last_3_closes[-1]:.2f})"
+                
+                elif recommendation['action'] == 'SHORT' and momentum_bullish:
+                    recommendation['action'] = 'NEUTRAL'
+                    override_reason = f"AI suggested SHORT, but last 2 candles are bullish ({last_3_closes[-3]:.2f} → {last_3_closes[-2]:.2f} → {last_3_closes[-1]:.2f})"
+                
+                if override_reason:
+                    print(f"\n🛡️  [GUARD RAIL] Momentum misalignment detected!")
+                    print(f"   {override_reason}")
+                    print(f"   Overriding {original_action} → NEUTRAL")
+                    recommendation['reasoning'] = f"[GUARD RAIL OVERRIDE] {override_reason}"
+                    recommendation['original_action'] = original_action
+        
         # Calculate ATR-based SL/TP
         if recommendation['action'] in ['LONG', 'SHORT']:
             print(f"   Calculating ATR-based risk management...")
@@ -260,38 +210,34 @@ Respond ONLY with JSON:
             risk_mgmt = calculate_stop_take_profit(candles_lower, direction)
             
             recommendation['risk_management'] = risk_mgmt
-            recommendation['strategy'] = 'minimalbtc'  # Tag strategy
+            recommendation['strategy'] = 'sol'  # Tag strategy
+            recommendation['symbol'] = state['symbol']  # Add symbol
             
-            # Add BTC context to recommendation
-            if btc_orderbook:
-                recommendation['btc_context'] = btc_orderbook['pressure']
-            
-            print(f"\n✅ [MINIMALBTC] Decision made:")
+            print(f"\n✅ [SOL] Decision made:")
+            print(f"   Symbol: {state['symbol']}")
             print(f"   Action: {recommendation['action']}")
             print(f"   Confidence: {recommendation.get('confidence', 'N/A')}")
             print(f"   Entry: ${risk_mgmt['entry']}")
             print(f"   Stop Loss: ${risk_mgmt['stop_loss']} (-{risk_mgmt['stop_distance_percentage']}%)")
             print(f"   Take Profit: ${risk_mgmt['take_profit']} (+{risk_mgmt['tp_distance_percentage']}%)")
             print(f"   R/R: 1:{risk_mgmt['risk_reward_ratio']}")
-            if btc_orderbook:
-                print(f"   BTC Context: {btc_orderbook['pressure']}")
         else:
-            recommendation['strategy'] = 'minimalbtc'
-            if btc_orderbook:
-                recommendation['btc_context'] = btc_orderbook['pressure']
-            print(f"\n✅ [MINIMALBTC] Decision made:")
+            recommendation['strategy'] = 'sol'
+            recommendation['symbol'] = state['symbol']  # Add symbol
+            print(f"\n✅ [SOL] Decision made:")
+            print(f"   Symbol: {state['symbol']}")
             print(f"   Action: {recommendation['action']}")
             print(f"   Reasoning: {recommendation.get('reasoning', 'N/A')}")
         
         # Only update recommendation, don't return full state (for parallel execution)
-        return {"recommendation_minimalbtc": recommendation}
+        return {"recommendation_sol": recommendation}
         
     except json.JSONDecodeError as e:
         error_msg = f"Error parsing AI response: {str(e)}"
         print(f"❌ {error_msg}")
-        return {"recommendation_minimalbtc": None}
+        return {"recommendation_sol": None}
     except Exception as e:
-        error_msg = f"Error making decision (minimalbtc): {str(e)}"
+        error_msg = f"Error making decision (sol): {str(e)}"
         print(f"❌ {error_msg}")
-        return {"recommendation_minimalbtc": None}
+        return {"recommendation_sol": None}
 

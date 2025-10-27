@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import requests
 import config
+from strategy_config import STRATEGIES
 
 app = Flask(__name__, static_folder='../web', static_url_path='')
 CORS(app)
@@ -42,24 +43,24 @@ def get_stats():
     """Get overall and per-strategy statistics"""
     symbol = request.args.get('symbol')
     
+    # Create strategy symbol mapping from config
+    strategy_symbols = {strategy.name: strategy.symbol for strategy in STRATEGIES}
+    
     stats_all = db.get_trade_stats(symbol)
-    stats_structured = db.get_trade_stats(symbol, 'structured')
-    stats_minimal = db.get_trade_stats(symbol, 'minimal')
-    stats_minimalbtc = db.get_trade_stats(symbol, 'minimalbtc')
-    stats_macro = db.get_trade_stats(symbol, 'macro')
-    stats_intraday = db.get_trade_stats(symbol, 'intraday')
-    stats_intraday2 = db.get_trade_stats(symbol, 'intraday2')
+    stats_sol = db.get_trade_stats(symbol, 'sol')
+    stats_sol_fast = db.get_trade_stats(symbol, 'sol_fast')
+    stats_eth = db.get_trade_stats(symbol, 'eth')
+    stats_eth_fast = db.get_trade_stats(symbol, 'eth_fast')
     
     return jsonify({
         'overall': stats_all,
         'strategies': {
-            'structured': stats_structured,
-            'minimal': stats_minimal,
-            'minimalbtc': stats_minimalbtc,
-            'macro': stats_macro,
-            'intraday': stats_intraday,
-            'intraday2': stats_intraday2
-        }
+            'sol': stats_sol,
+            'sol_fast': stats_sol_fast,
+            'eth': stats_eth,
+            'eth_fast': stats_eth_fast
+        },
+        'strategy_symbols': strategy_symbols  # Add symbol mapping
     })
 
 
