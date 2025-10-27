@@ -560,6 +560,94 @@
                 </div>
                 <span class="strategy-badge badge-eth-fast">AI ETH Fast (EMA 7/25)</span>
             </div>
+            
+            <!-- DOGE -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=doge'">
+                <h3 id="dogeTitle"><span class="crypto-icon doge">Ð</span>DOGE</h3>
+                <div class="stat-value" id="dogeWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="dogeWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="dogePnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="dogePF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-doge">AI DOGE (EMA 20/50)</span>
+            </div>
+            
+            <!-- DOGE Fast -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=doge_fast'">
+                <h3 id="doge_fastTitle"><span class="crypto-icon doge">Ð</span>DOGE Fast</h3>
+                <div class="stat-value" id="doge_fastWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="doge_fastWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="doge_fastPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="doge_fastPF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-doge-fast">AI DOGE Fast (EMA 7/25)</span>
+            </div>
+            
+            <!-- XRP -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=xrp'">
+                <h3 id="xrpTitle"><span class="crypto-icon xrp">✕</span>XRP</h3>
+                <div class="stat-value" id="xrpWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="xrpWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="xrpPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="xrpPF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-xrp">AI XRP (EMA 20/50)</span>
+            </div>
+            
+            <!-- XRP Fast -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=xrp_fast'">
+                <h3 id="xrp_fastTitle"><span class="crypto-icon xrp">✕</span>XRP Fast</h3>
+                <div class="stat-value" id="xrp_fastWinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="xrp_fastWinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="xrp_fastPnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="xrp_fastPF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-xrp-fast">AI XRP Fast (EMA 7/25)</span>
+            </div>
         </div>
         
         <!-- Chart Section -->
@@ -574,15 +662,32 @@
         <div class="trades-section">
             <h2 style="margin-bottom: 20px; color: #1f2937;">📋 Recent Trades</h2>
             
-            <!-- Filters -->
-            <div class="filters">
-                <button class="filter-btn active" data-filter="all">All Trades</button>
-                <button class="filter-btn" data-filter="sol"><span class="crypto-icon sol">◎</span>SOL</button>
-                <button class="filter-btn" data-filter="sol_fast"><span class="crypto-icon sol">◎</span>SOL Fast</button>
-                <button class="filter-btn" data-filter="eth"><span class="crypto-icon eth">Ξ</span>ETH</button>
-                <button class="filter-btn" data-filter="eth_fast"><span class="crypto-icon eth">Ξ</span>ETH Fast</button>
-                <button class="filter-btn" data-filter="open">⏳ Open</button>
-                <button class="filter-btn" data-filter="closed">✅ Closed</button>
+            <!-- Filters and Limit Selector -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 15px; flex-wrap: wrap;">
+                <div class="filters" style="display: flex; align-items: center;">
+                    <button class="filter-btn active" data-filter="all">All Trades</button>
+                    <button class="filter-btn" data-filter="sol"><span class="crypto-icon sol">◎</span>SOL</button>
+                    <button class="filter-btn" data-filter="sol_fast"><span class="crypto-icon sol">◎</span>SOL Fast</button>
+                    <button class="filter-btn" data-filter="eth"><span class="crypto-icon eth">Ξ</span>ETH</button>
+                    <button class="filter-btn" data-filter="eth_fast"><span class="crypto-icon eth">Ξ</span>ETH Fast</button>
+                    <button class="filter-btn" data-filter="doge"><span class="crypto-icon doge">Ð</span>DOGE</button>
+                    <button class="filter-btn" data-filter="doge_fast"><span class="crypto-icon doge">Ð</span>DOGE Fast</button>
+                    <button class="filter-btn" data-filter="xrp"><span class="crypto-icon xrp">✕</span>XRP</button>
+                    <button class="filter-btn" data-filter="xrp_fast"><span class="crypto-icon xrp">✕</span>XRP Fast</button>
+                    <button class="filter-btn" data-filter="open">⏳ Open</button>
+                    <button class="filter-btn" data-filter="closed">✅ Closed</button>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                    <label for="limitSelect" style="color: #94a3b8; font-size: 12px; font-weight: 600; line-height: 1;">Show:</label>
+                    <select id="limitSelect" class="limit-select">
+                        <option value="15">15 trades</option>
+                        <option value="30">30 trades</option>
+                        <option value="45">45 trades</option>
+                        <option value="60">60 trades</option>
+                        <option value="all">All trades</option>
+                    </select>
+                </div>
             </div>
             
             <!-- Table -->
@@ -611,6 +716,7 @@
     
     <script>
         let currentFilter = 'all';
+        let currentLimit = 15;
         let priceChart = null;
         
         // Load data on page load
@@ -634,6 +740,12 @@
                 loadTrades();
                 loadChart(); // Update chart when filter changes
             });
+        });
+        
+        // Limit selector
+        document.getElementById('limitSelect').addEventListener('change', (e) => {
+            currentLimit = e.target.value === 'all' ? 'all' : parseInt(e.target.value);
+            loadTrades();
         });
         
         async function loadData() {
@@ -844,6 +956,62 @@
                 document.getElementById('eth_fastPF').textContent = 
                     ethFast.closed_trades > 0 ? `${ethFast.profit_factor.toFixed(2)}` : 'N/A';
                 
+                // DOGE
+                const doge = data.strategies.doge || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                const dogeSymbol = window.strategySymbols['doge'] || 'DOGEUSDT';
+                document.getElementById('dogeTitle').innerHTML = `<span class="crypto-icon doge">Ð</span>DOGE (${dogeSymbol})`;
+                document.getElementById('dogeWinRate').textContent = 
+                    doge.closed_trades > 0 ? `${doge.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('dogeWinLoss').textContent = 
+                    `${doge.wins}/${doge.losses}`;
+                const dogePnL = document.getElementById('dogePnL');
+                dogePnL.textContent = `$${doge.total_pnl.toFixed(2)}`;
+                dogePnL.style.color = doge.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('dogePF').textContent = 
+                    doge.closed_trades > 0 ? `${doge.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // DOGE Fast
+                const dogeFast = data.strategies.doge_fast || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                const dogeFastSymbol = window.strategySymbols['doge_fast'] || 'DOGEUSDT';
+                document.getElementById('doge_fastTitle').innerHTML = `<span class="crypto-icon doge">Ð</span>DOGE Fast (${dogeFastSymbol})`;
+                document.getElementById('doge_fastWinRate').textContent = 
+                    dogeFast.closed_trades > 0 ? `${dogeFast.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('doge_fastWinLoss').textContent = 
+                    `${dogeFast.wins}/${dogeFast.losses}`;
+                const dogeFastPnL = document.getElementById('doge_fastPnL');
+                dogeFastPnL.textContent = `$${dogeFast.total_pnl.toFixed(2)}`;
+                dogeFastPnL.style.color = dogeFast.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('doge_fastPF').textContent = 
+                    dogeFast.closed_trades > 0 ? `${dogeFast.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // XRP
+                const xrp = data.strategies.xrp || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                const xrpSymbol = window.strategySymbols['xrp'] || 'XRPUSDT';
+                document.getElementById('xrpTitle').innerHTML = `<span class="crypto-icon xrp">✕</span>XRP (${xrpSymbol})`;
+                document.getElementById('xrpWinRate').textContent = 
+                    xrp.closed_trades > 0 ? `${xrp.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('xrpWinLoss').textContent = 
+                    `${xrp.wins}/${xrp.losses}`;
+                const xrpPnL = document.getElementById('xrpPnL');
+                xrpPnL.textContent = `$${xrp.total_pnl.toFixed(2)}`;
+                xrpPnL.style.color = xrp.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('xrpPF').textContent = 
+                    xrp.closed_trades > 0 ? `${xrp.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // XRP Fast
+                const xrpFast = data.strategies.xrp_fast || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                const xrpFastSymbol = window.strategySymbols['xrp_fast'] || 'XRPUSDT';
+                document.getElementById('xrp_fastTitle').innerHTML = `<span class="crypto-icon xrp">✕</span>XRP Fast (${xrpFastSymbol})`;
+                document.getElementById('xrp_fastWinRate').textContent = 
+                    xrpFast.closed_trades > 0 ? `${xrpFast.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('xrp_fastWinLoss').textContent = 
+                    `${xrpFast.wins}/${xrpFast.losses}`;
+                const xrpFastPnL = document.getElementById('xrp_fastPnL');
+                xrpFastPnL.textContent = `$${xrpFast.total_pnl.toFixed(2)}`;
+                xrpFastPnL.style.color = xrpFast.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('xrp_fastPF').textContent = 
+                    xrpFast.closed_trades > 0 ? `${xrpFast.profit_factor.toFixed(2)}` : 'N/A';
+                
                 
             } catch (error) {
                 console.error('Error loading stats:', error);
@@ -852,7 +1020,8 @@
         
         async function loadTrades() {
             try {
-                let url = '/api/trades?limit=50';
+                // Build URL with limit
+                let url = currentLimit === 'all' ? '/api/trades?limit=10000' : `/api/trades?limit=${currentLimit}`;
                 
                 // Apply filters
                 if (currentFilter === 'open' || currentFilter === 'closed') {
@@ -889,6 +1058,10 @@
                         strategyIcon = '<span class="crypto-icon sol">◎</span>';
                     } else if (trade.strategy === 'eth' || trade.strategy === 'eth_fast') {
                         strategyIcon = '<span class="crypto-icon eth">Ξ</span>';
+                    } else if (trade.strategy === 'doge' || trade.strategy === 'doge_fast') {
+                        strategyIcon = '<span class="crypto-icon doge">Ð</span>';
+                    } else if (trade.strategy === 'xrp' || trade.strategy === 'xrp_fast') {
+                        strategyIcon = '<span class="crypto-icon xrp">✕</span>';
                     } else {
                         strategyIcon = '🔄';
                     }
@@ -897,6 +1070,10 @@
                                         trade.strategy === 'sol_fast' ? 'SOL Fast' :
                                         trade.strategy === 'eth' ? 'ETH' :
                                         trade.strategy === 'eth_fast' ? 'ETH Fast' :
+                                        trade.strategy === 'doge' ? 'DOGE' :
+                                        trade.strategy === 'doge_fast' ? 'DOGE Fast' :
+                                        trade.strategy === 'xrp' ? 'XRP' :
+                                        trade.strategy === 'xrp_fast' ? 'XRP Fast' :
                                         trade.strategy.toUpperCase();
                     const statusClass = trade.status === 'OPEN' ? 'status-open' : 'status-closed';
                     

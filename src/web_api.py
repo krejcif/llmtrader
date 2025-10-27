@@ -69,7 +69,7 @@ def get_trades():
     """Get trades with filtering and live P&L for open positions"""
     status = request.args.get('status')  # open, closed
     strategy = request.args.get('strategy')  # structured, minimal, minimalbtc, macro, intraday, intraday2
-    limit = int(request.args.get('limit', 50))
+    limit = int(request.args.get('limit', 15))
     
     conn = sqlite3.connect(db.db_path)
     conn.row_factory = sqlite3.Row

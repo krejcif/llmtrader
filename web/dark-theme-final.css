@@ -369,15 +369,39 @@ tbody tr:hover td {
     border-color: #8b5cf6;
 }
 
+.badge-doge {
+    background: #78350f;
+    color: #fde68a;
+    border-color: #f59e0b;
+}
+
+.badge-doge-fast {
+    background: #713f12;
+    color: #fcd34d;
+    border-color: #fbbf24;
+}
+
+.badge-xrp {
+    background: #1e3a8a;
+    color: #93c5fd;
+    border-color: #3b82f6;
+}
+
+.badge-xrp-fast {
+    background: #1e40af;
+    color: #bfdbfe;
+    border-color: #60a5fa;
+}
+
 /* Crypto Icon Badges for Strategy Display */
 .crypto-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    font-size: 14px;
+    font-size: 11px;
     font-weight: bold;
     margin-right: 6px;
     vertical-align: middle;
@@ -393,6 +417,18 @@ tbody tr:hover td {
     background: linear-gradient(135deg, #627EEA, #8A92B2);
     color: #fff;
     box-shadow: 0 0 8px rgba(98, 126, 234, 0.5);
+}
+
+.crypto-icon.doge {
+    background: linear-gradient(135deg, #C2A633, #D9BD3A);
+    color: #000;
+    box-shadow: 0 0 8px rgba(194, 166, 51, 0.5);
+}
+
+.crypto-icon.xrp {
+    background: linear-gradient(135deg, #23292F, #346AA9);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(52, 106, 169, 0.5);
 }
 
 .badge.long {
@@ -440,6 +476,10 @@ tbody tr:hover td {
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
     transition: all 0.2s;
 }
 
@@ -451,6 +491,31 @@ tbody tr:hover td {
 
 .filter-btn:hover {
     border-color: #475569;
+}
+
+/* Limit Select Dropdown */
+.limit-select {
+    padding: 7px 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    height: 32px;
+    box-sizing: border-box;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.limit-select:hover {
+    border-color: #475569;
+}
+
+.limit-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 /* Details */

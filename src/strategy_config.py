@@ -4,12 +4,18 @@ from agents.decision_sol import make_decision_sol
 from agents.decision_sol_fast import make_decision_sol_fast
 from agents.decision_eth import make_decision_eth
 from agents.decision_eth_fast import make_decision_eth_fast
+from agents.decision_doge import make_decision_doge
+from agents.decision_doge_fast import make_decision_doge_fast
+from agents.decision_xrp import make_decision_xrp
+from agents.decision_xrp_fast import make_decision_xrp_fast
 from agents.decision_example import make_decision_example
 
 # Analysis functions
 from agents.analysis_generic import analyze_market_generic
 from agents.analysis_sol_fast import analyze_market_sol_fast
 from agents.analysis_eth_fast import analyze_market_eth_fast
+from agents.analysis_doge_fast import analyze_market_doge_fast
+from agents.analysis_xrp_fast import analyze_market_xrp_fast
 
 # Import config for default symbol
 import config
@@ -97,6 +103,52 @@ STRATEGIES = [
         symbol="ETHUSDT",
         decision_func=make_decision_eth_fast,
         analysis_func=analyze_market_eth_fast,
+        timeframe_higher="1h",
+        timeframe_lower="15m",
+        interval_minutes=15,
+        enabled=True
+    ),
+    
+    # DOGE strategy - 1h/15m, runs every 15 min (EMA 20/50 for DOGEUSDT)
+    StrategyConfig(
+        name="doge",
+        symbol="DOGEUSDT",
+        decision_func=make_decision_doge,
+        timeframe_higher="1h",
+        timeframe_lower="15m",
+        interval_minutes=15,
+        enabled=True
+    ),
+    
+    # DOGE Fast strategy - 1h/15m, runs every 15 min (EMA 7/25 for DOGEUSDT - faster response)
+    StrategyConfig(
+        name="doge_fast",
+        symbol="DOGEUSDT",
+        decision_func=make_decision_doge_fast,
+        analysis_func=analyze_market_doge_fast,
+        timeframe_higher="1h",
+        timeframe_lower="15m",
+        interval_minutes=15,
+        enabled=True
+    ),
+    
+    # XRP strategy - 1h/15m, runs every 15 min (EMA 20/50 for XRPUSDT)
+    StrategyConfig(
+        name="xrp",
+        symbol="XRPUSDT",
+        decision_func=make_decision_xrp,
+        timeframe_higher="1h",
+        timeframe_lower="15m",
+        interval_minutes=15,
+        enabled=True
+    ),
+    
+    # XRP Fast strategy - 1h/15m, runs every 15 min (EMA 7/25 for XRPUSDT - faster response)
+    StrategyConfig(
+        name="xrp_fast",
+        symbol="XRPUSDT",
+        decision_func=make_decision_xrp_fast,
+        analysis_func=analyze_market_xrp_fast,
         timeframe_higher="1h",
         timeframe_lower="15m",
         interval_minutes=15,
