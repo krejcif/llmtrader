@@ -18,6 +18,8 @@ import config
 from datetime import datetime, timedelta
 import time
 import signal
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from copy import deepcopy
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -227,23 +229,49 @@ class DynamicTradingBot:
         
         return state
     
+    def run_strategy_wrapper(self, strategy, base_state):
+        """
+        Wrapper for run_strategy that returns strategy-specific data only
+        Used for parallel execution with ThreadPoolExecutor
+        """
+        # Each thread gets its own copy of base state
+        thread_state = deepcopy(base_state)
+        
+        # Run strategy (modifies thread_state)
+        result_state = self.run_strategy(strategy, thread_state)
+        
+        # Return only strategy-specific keys (not shared data like news, btc)
+        strategy_keys = [
+            f'market_data_{strategy.name}',
+            f'analysis_{strategy.name}',
+            f'recommendation_{strategy.name}'
+        ]
+        
+        strategy_result = {
+            'strategy_name': strategy.name,
+            'data': {key: result_state.get(key) for key in strategy_keys if key in result_state}
+        }
+        
+        return strategy_result
+    
     def run_analysis_interval(self, interval_minutes: int):
-        """Run all strategies scheduled for this interval"""
+        """Run all strategies scheduled for this interval (PARALLEL execution)"""
         strategies = get_strategies_by_interval(interval_minutes)
         
         if not strategies:
             return
         
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        start_time = time.time()
         
         self.logger.info("="*70)
         self.logger.info(f"ANALYSIS CYCLE - {interval_minutes} min interval - {timestamp}")
-        self.logger.info(f"Running {len(strategies)} strateg{'y' if len(strategies) == 1 else 'ies'}: {', '.join(s.name for s in strategies)}")
+        self.logger.info(f"Running {len(strategies)} strateg{'y' if len(strategies) == 1 else 'ies'} PARALLEL: {', '.join(s.name for s in strategies)}")
         self.logger.info("="*70)
         
         print(f"\n{'='*70}")
         print(f"📊 ANALYSIS CYCLE - {interval_minutes} min interval - {timestamp}")
-        print(f"Running {len(strategies)} strateg{'y' if len(strategies) == 1 else 'ies'}: {', '.join(s.name for s in strategies)}")
+        print(f"⚡ Running {len(strategies)} strateg{'y' if len(strategies) == 1 else 'ies'} in PARALLEL: {', '.join(s.name for s in strategies)}")
         print(f"{'='*70}")
         
         try:
@@ -255,13 +283,38 @@ class DynamicTradingBot:
             
             # Collect shared data once (news, BTC, IXIC)
             print(f"\n📰 Collecting shared data (news, BTC, IXIC)...")
-            state = self.collect_shared_data(initial_state)
+            base_state = self.collect_shared_data(initial_state)
             
-            # Run each strategy (each gets fresh state with shared data)
-            for strategy in strategies:
-                # Each strategy works with same base state (symbol, news, btc, ixic)
-                # but adds its own strategy-specific data
-                state = self.run_strategy(strategy, state)
+            # Run strategies in PARALLEL using ThreadPoolExecutor
+            print(f"\n⚡ Running strategies in parallel threads...")
+            strategy_results = []
+            
+            with ThreadPoolExecutor(max_workers=len(strategies)) as executor:
+                # Submit all strategy runs to thread pool
+                future_to_strategy = {
+                    executor.submit(self.run_strategy_wrapper, strategy, base_state): strategy 
+                    for strategy in strategies
+                }
+                
+                # Collect results as they complete
+                for future in as_completed(future_to_strategy):
+                    strategy = future_to_strategy[future]
+                    try:
+                        result = future.result()
+                        strategy_results.append(result)
+                        print(f"   ✓ {result['strategy_name'].upper()} completed")
+                    except Exception as exc:
+                        self.logger.error(f"Strategy {strategy.name} generated exception: {exc}", exc_info=True)
+                        print(f"   ✗ {strategy.name.upper()} failed: {exc}")
+            
+            # Merge all strategy results into final state
+            state = deepcopy(base_state)
+            for result in strategy_results:
+                state.update(result['data'])
+            
+            elapsed = time.time() - start_time
+            print(f"\n⚡ All strategies completed in {elapsed:.2f}s (parallel execution)")
+            self.logger.info(f"Parallel execution completed in {elapsed:.2f}s")
             
             # Execute trades for all strategies
             print(f"\n💼 Executing trades...")
