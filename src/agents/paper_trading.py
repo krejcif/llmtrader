@@ -243,6 +243,14 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                 sl_partial1 = original_sl  # Original SL for quick exit
                 sl_partial2 = entry + (original_sl - entry) * 0.5  # 50% tighter
             
+            # FIXED POSITION SIZE: $10,000 split into 2 partial trades (50% each)
+            TOTAL_POSITION_USD = 10000.0
+            partial_position_usd = TOTAL_POSITION_USD / 2  # $5,000 per partial
+            
+            # Calculate size (quantity of asset to buy) for each partial
+            size_partial1 = partial_position_usd / entry  # Quantity for $5,000
+            size_partial2 = partial_position_usd / entry  # Quantity for $5,000
+            
             # TRADE 1: Partial (50% TP) - Original SL
             trade_data_1 = {
                 "symbol": state['symbol'],
@@ -252,16 +260,18 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                 "entry_price": entry,
                 "stop_loss": round(sl_partial1, 2),
                 "take_profit": round(partial_tp, 2),
+                "size": round(size_partial1, 4),  # Quantity of asset
                 "risk_amount": risk_mgmt['risk_amount'] / 2,
                 "reward_amount": risk_mgmt['reward_amount'] / 4,  # Half distance
                 "risk_reward_ratio": 1.0,  # 50% TP = 1:1 R/R
                 "atr": risk_mgmt['atr'],
                 "entry_setup": strategy_analysis.get('entry_quality', 'unknown'),
                 "entry_time": datetime.now(timezone.utc).isoformat(),
-                "reasoning": f"{recommendation.get('reasoning', '')} [PARTIAL 1/2]",
+                "reasoning": f"{recommendation.get('reasoning', '')} [PARTIAL 1/2 - ${partial_position_usd:.0f}]",
                 "analysis_data": {
                     "strategy": strategy_name,
                     "partial": "1/2",
+                    "position_usd": partial_position_usd,
                     "confluence": strategy_analysis.get('confluence'),
                     "entry_quality": strategy_analysis.get('entry_quality')
                 }
@@ -276,16 +286,18 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                 "entry_price": entry,
                 "stop_loss": round(sl_partial2, 2),
                 "take_profit": full_tp,
+                "size": round(size_partial2, 4),  # Quantity of asset
                 "risk_amount": risk_mgmt['risk_amount'] / 2,
                 "reward_amount": risk_mgmt['reward_amount'] / 2,
                 "risk_reward_ratio": risk_mgmt['risk_reward_ratio'],
                 "atr": risk_mgmt['atr'],
                 "entry_setup": strategy_analysis.get('entry_quality', 'unknown'),
                 "entry_time": datetime.now(timezone.utc).isoformat(),
-                "reasoning": f"{recommendation.get('reasoning', '')} [FULL 2/2]",
+                "reasoning": f"{recommendation.get('reasoning', '')} [FULL 2/2 - ${partial_position_usd:.0f}]",
                 "analysis_data": {
                     "strategy": strategy_name,
                     "partial": "2/2",
+                    "position_usd": partial_position_usd,
                     "confluence": strategy_analysis.get('confluence'),
                     "entry_quality": strategy_analysis.get('entry_quality')
                 }
@@ -308,18 +320,19 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             fee_rate = config.TRADING_FEE_RATE
             
             for tid, tdata in [(trade_id_1, data_1), (trade_id_2, data_2)]:
-                # Calculate entry fee
-                entry_fee = tdata['entry_price'] * fee_rate
+                # Calculate entry fee (0.05% of position value at entry)
+                position_value_at_entry = tdata['entry_price'] * tdata.get('size', 0)
+                entry_fee = position_value_at_entry * fee_rate
                 
                 cursor.execute('''
                     INSERT INTO trades (
                         trade_id, symbol, strategy, action, confidence,
-                        entry_price, stop_loss, take_profit,
+                        entry_price, stop_loss, take_profit, size,
                         risk_amount, reward_amount, risk_reward_ratio,
                         atr, entry_setup, status, entry_time,
                         entry_fee, exit_fee, total_fees,
                         analysis_data, reasoning
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     tid,
                     tdata['symbol'],
@@ -329,6 +342,7 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                     tdata['entry_price'],
                     tdata['stop_loss'],
                     tdata['take_profit'],
+                    tdata.get('size', 0),  # Position size (quantity of asset)
                     tdata.get('risk_amount'),
                     tdata.get('reward_amount'),
                     tdata.get('risk_reward_ratio'),
@@ -352,6 +366,8 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             db_log.log_strategy_run(log_data)
             
             print(f"✅ [{strategy_name.upper()}] 2 Partial trades executed:")
+            print(f"   Position Size: ${TOTAL_POSITION_USD:.0f} (${partial_position_usd:.0f} each)")
+            print(f"   Quantity: {size_partial1:.4f} {state['symbol'][:3]} per partial")
             print(f"   1/2 (50% TP): {trade_id_1[:50]}... @ TP ${round(partial_tp, 2)}")
             print(f"   2/2 (Full TP): {trade_id_2[:50]}... @ TP ${full_tp}")
             print(f"   Entry: ${entry} | SL: ${original_sl}")

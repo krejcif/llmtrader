@@ -72,6 +72,12 @@ class TradingDatabase:
                 cursor.execute("ALTER TABLE trades ADD COLUMN total_fees REAL DEFAULT 0")
                 conn.commit()
                 print("✅ Database migration complete (fee columns added)")
+            
+            if 'size' not in columns:
+                print("🔧 Migrating database: Adding 'size' column...")
+                cursor.execute("ALTER TABLE trades ADD COLUMN size REAL DEFAULT 0")
+                conn.commit()
+                print("✅ Database migration complete (size column added)")
         
         # Trades table
         cursor.execute('''
@@ -85,6 +91,7 @@ class TradingDatabase:
                 entry_price REAL NOT NULL,
                 stop_loss REAL NOT NULL,
                 take_profit REAL NOT NULL,
+                size REAL DEFAULT 0,
                 risk_amount REAL,
                 reward_amount REAL,
                 risk_reward_ratio REAL,
@@ -261,23 +268,28 @@ class TradingDatabase:
         
         action = trade['action']
         entry_price = trade['entry_price']
+        size = trade['size'] if trade['size'] is not None else 0
         entry_fee = trade['entry_fee'] if trade['entry_fee'] is not None else 0
         
-        # Calculate exit fee (0.05% of exit price - Binance Futures taker)
-        exit_fee = exit_price * fee_rate
+        # Calculate exit fee (0.05% of position value at exit)
+        position_value_at_exit = exit_price * size
+        exit_fee = position_value_at_exit * fee_rate
         
         # Calculate total fees
         total_fees = entry_fee + exit_fee
         
-        # Calculate P&L before fees
+        # Calculate P&L before fees (price difference * position size)
         if action == 'LONG':
-            pnl_before_fees = exit_price - entry_price
+            pnl_before_fees = (exit_price - entry_price) * size
         else:  # SHORT
-            pnl_before_fees = entry_price - exit_price
+            pnl_before_fees = (entry_price - exit_price) * size
         
         # Calculate final P&L after fees
         pnl = pnl_before_fees - total_fees
-        pnl_percentage = (pnl / entry_price) * 100
+        
+        # P&L percentage based on entry position value
+        entry_position_value = entry_price * size
+        pnl_percentage = (pnl / entry_position_value) * 100 if entry_position_value > 0 else 0
         
         # Update trade
         cursor.execute('''

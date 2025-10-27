@@ -164,6 +164,42 @@ Respond ONLY with JSON:
         if 'action' not in recommendation or recommendation['action'] not in ['LONG', 'SHORT', 'NEUTRAL']:
             raise ValueError("Invalid action in recommendation")
         
+        # 🛡️ GUARD RAIL #1: Check momentum alignment (last 2 candles)
+        # If AI recommendation is opposite to recent price momentum, override to NEUTRAL
+        if recommendation['action'] in ['LONG', 'SHORT']:
+            candles_lower = market_data['timeframes'][tf_lower]
+            
+            # Get last 3 closes to determine momentum
+            last_3_closes = candles_lower['close'].tail(3).tolist()
+            
+            if len(last_3_closes) >= 3:
+                # Check if last 2 candles are bullish or bearish
+                candle_1_bullish = last_3_closes[-1] > last_3_closes[-2]  # Most recent candle
+                candle_2_bullish = last_3_closes[-2] > last_3_closes[-3]  # Previous candle
+                
+                # Determine momentum (need at least 2 candles in same direction)
+                momentum_bullish = candle_1_bullish and candle_2_bullish
+                momentum_bearish = not candle_1_bullish and not candle_2_bullish
+                
+                original_action = recommendation['action']
+                override_reason = None
+                
+                # Check for misalignment
+                if recommendation['action'] == 'LONG' and momentum_bearish:
+                    recommendation['action'] = 'NEUTRAL'
+                    override_reason = f"AI suggested LONG, but last 2 candles are bearish ({last_3_closes[-3]:.2f} → {last_3_closes[-2]:.2f} → {last_3_closes[-1]:.2f})"
+                
+                elif recommendation['action'] == 'SHORT' and momentum_bullish:
+                    recommendation['action'] = 'NEUTRAL'
+                    override_reason = f"AI suggested SHORT, but last 2 candles are bullish ({last_3_closes[-3]:.2f} → {last_3_closes[-2]:.2f} → {last_3_closes[-1]:.2f})"
+                
+                if override_reason:
+                    print(f"\n🛡️  [GUARD RAIL] Momentum misalignment detected!")
+                    print(f"   {override_reason}")
+                    print(f"   Overriding {original_action} → NEUTRAL")
+                    recommendation['reasoning'] = f"[GUARD RAIL OVERRIDE] {override_reason}"
+                    recommendation['original_action'] = original_action
+        
         # Calculate ATR-based SL/TP
         if recommendation['action'] in ['LONG', 'SHORT']:
             print(f"   Calculating ATR-based risk management...")

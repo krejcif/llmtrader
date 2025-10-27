@@ -117,14 +117,17 @@ def get_trades():
                     current_price = current_prices[trade['symbol']]
                     if current_price:
                         entry_price = trade['entry_price']
+                        size = trade.get('size', 0)  # Position size (quantity of asset)
                         
-                        # Calculate P&L based on direction
+                        # Calculate P&L based on direction (price difference * size)
                         if trade['action'] == 'LONG':
-                            pnl_pct = ((current_price - entry_price) / entry_price) * 100
-                            pnl_dollars = current_price - entry_price
+                            pnl_dollars = (current_price - entry_price) * size
                         else:  # SHORT
-                            pnl_pct = ((entry_price - current_price) / entry_price) * 100
-                            pnl_dollars = entry_price - current_price
+                            pnl_dollars = (entry_price - current_price) * size
+                        
+                        # Calculate P&L percentage based on position value
+                        position_value = entry_price * size
+                        pnl_pct = (pnl_dollars / position_value) * 100 if position_value > 0 else 0
                         
                         # Add live P&L to trade data (both $ and %)
                         trade['live_pnl_percentage'] = round(pnl_pct, 2)
@@ -323,20 +326,14 @@ def close_trade_api(trade_id):
         client = BinanceClient()
         current_price = client.get_current_price(symbol)
         
-        # Close trade using database function (handles P&L calculation with fees)
+        # Close trade using database function (handles P&L calculation with fees and size)
         db.close_trade(
             trade_id=trade_id,
             exit_price=current_price,
             exit_reason='MANUAL_CLOSE'
         )
         
-        # Calculate P&L percentage for response (before fees for display)
-        if action == 'LONG':
-            pnl_pct = ((current_price - entry_price) / entry_price) * 100
-        else:  # SHORT
-            pnl_pct = ((entry_price - current_price) / entry_price) * 100
-        
-        # Get actual P&L after fees from database
+        # Get actual P&L after fees from database (calculated with proper size)
         conn = sqlite3.connect(db.db_path)
         cursor = conn.cursor()
         cursor.execute('SELECT pnl, pnl_percentage FROM trades WHERE trade_id = ?', (trade_id,))
