@@ -409,12 +409,11 @@
             <!-- Filters -->
             <div class="filters">
                 <button class="filter-btn active" data-filter="all">All Strategies</button>
-                <button class="filter-btn" data-filter="structured">📐 Structured</button>
                 <button class="filter-btn" data-filter="minimal">🤖 Minimal</button>
+                <button class="filter-btn" data-filter="minimal_e725">⚡ E725</button>
                 <button class="filter-btn" data-filter="minimalbtc">₿ MinimalBTC</button>
                 <button class="filter-btn" data-filter="macro">🌍 Macro</button>
                 <button class="filter-btn" data-filter="intraday">⚡ Intraday</button>
-                <button class="filter-btn" data-filter="intraday2">🔄 Intraday2</button>
             </div>
             
             <!-- Logs Container -->
@@ -466,17 +465,17 @@
                 }
                 
                 container.innerHTML = data.runs.map(run => {
-                    const strategyIcon = run.strategy === 'structured' ? '📐' : 
-                                       run.strategy === 'minimal' ? '🤖' : 
+                    const strategyIcon = run.strategy === 'minimal' ? '🤖' : 
+                                       run.strategy === 'minimal_e725' ? '⚡' : 
                                        run.strategy === 'macro' ? '🌍' : 
                                        run.strategy === 'intraday' ? '⚡' : 
-                                       run.strategy === 'minimalbtc' ? '₿' : '🔄';
+                                       run.strategy === 'minimalbtc' ? '₿' : '🤖';
                     
                     const borderColor = run.strategy === 'minimal' ? '#10b981' :
-                                       run.strategy === 'structured' ? '#3b82f6' :
+                                       run.strategy === 'minimal_e725' ? '#3b82f6' :
                                        run.strategy === 'macro' ? '#6366f1' :
                                        run.strategy === 'intraday' ? '#ec4899' :
-                                       run.strategy === 'minimalbtc' ? '#f59e0b' : '#a855f7';
+                                       run.strategy === 'minimalbtc' ? '#f59e0b' : '#10b981';
                     
                     const actionClass = run.action === 'LONG' ? 'action-long' : 
                                        run.action === 'SHORT' ? 'action-short' : 'action-neutral';

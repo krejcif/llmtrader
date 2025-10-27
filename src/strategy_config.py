@@ -1,17 +1,23 @@
 """Strategy Configuration System - Flexible multi-strategy setup"""
 
 from agents.decision_minimal import make_decision_minimal
+from agents.decision_minimal_e725 import make_decision_minimal_e725
 from agents.decision_minimalbtc import make_decision_minimalbtc
 from agents.decision_macro import make_decision_macro
 from agents.decision_intraday import make_decision_intraday
 from agents.decision_example import make_decision_example
+
+# Analysis functions
+from agents.analysis_generic import analyze_market_generic
+from agents.analysis_minimal_e725 import analyze_market_minimal_e725
 
 
 class StrategyConfig:
     """Configuration for a trading strategy"""
     
     def __init__(self, name: str, decision_func, timeframe_higher: str, 
-                 timeframe_lower: str, interval_minutes: int, enabled: bool = True):
+                 timeframe_lower: str, interval_minutes: int, enabled: bool = True,
+                 analysis_func=None):
         """
         Initialize strategy configuration
         
@@ -22,9 +28,11 @@ class StrategyConfig:
             timeframe_lower: Lower timeframe for entry (e.g., '15m', '5m')
             interval_minutes: How often to run this strategy in minutes
             enabled: Whether strategy is active
+            analysis_func: Optional custom analysis function (defaults to analyze_market_generic)
         """
         self.name = name
         self.decision_func = decision_func
+        self.analysis_func = analysis_func if analysis_func else analyze_market_generic
         self.timeframe_higher = timeframe_higher
         self.timeframe_lower = timeframe_lower
         self.interval_minutes = interval_minutes
@@ -46,10 +54,21 @@ class StrategyConfig:
 # =============================================================================
 
 STRATEGIES = [
-    # Minimal strategy - 1h/15m, runs every 15 min
+    # Minimal strategy - 1h/15m, runs every 15 min (EMA 20/50)
     StrategyConfig(
         name="minimal",
         decision_func=make_decision_minimal,
+        timeframe_higher="1h",
+        timeframe_lower="15m",
+        interval_minutes=15,
+        enabled=True
+    ),
+    
+    # Minimal E725 strategy - 1h/15m, runs every 15 min (EMA 7/25 - faster response)
+    StrategyConfig(
+        name="minimal_e725",
+        decision_func=make_decision_minimal_e725,
+        analysis_func=analyze_market_minimal_e725,
         timeframe_higher="1h",
         timeframe_lower="15m",
         interval_minutes=15,
@@ -96,17 +115,6 @@ STRATEGIES = [
         interval_minutes=15,
         enabled=False  # DISABLED - template only
     ),
-    
-    # Add more strategies here!
-    # Example: Ultra-fast scalper (1m/5m, every 1 minute)
-    # StrategyConfig(
-    #     name="scalper",
-    #     decision_func=make_decision_scalper,
-    #     timeframe_higher="5m",
-    #     timeframe_lower="1m",
-    #     interval_minutes=1,
-    #     enabled=False
-    # ),
 ]
 
 

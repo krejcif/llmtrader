@@ -668,14 +668,18 @@ def detect_choppy_market(indicators: Dict, current_price: float) -> Dict:
         choppy_score += 2
         signals.append(f"Low ATR ({atr_pct:.1f}%)")
     
-    # 3. EMA convergence (no clear trend)
-    ema_20 = indicators['ema']['ema_20']
-    ema_50 = indicators['ema']['ema_50']
-    ema_distance = abs(ema_20 - ema_50) / current_price * 100
-    
-    if ema_distance < 0.5:  # EMAs very close
-        choppy_score += 2
-        signals.append(f"EMA convergence ({ema_distance:.2f}%)")
+    # 3. EMA convergence (no clear trend) - dynamic detection
+    ema_keys = [k for k in indicators['ema'].keys() if k.startswith('ema_')]
+    if len(ema_keys) >= 2:
+        # Sort by period (e.g., ema_7, ema_20, ema_25, ema_50)
+        ema_keys_sorted = sorted(ema_keys, key=lambda x: int(x.split('_')[1]))
+        ema_short = indicators['ema'][ema_keys_sorted[0]]
+        ema_long = indicators['ema'][ema_keys_sorted[1]]
+        ema_distance = abs(ema_short - ema_long) / current_price * 100
+        
+        if ema_distance < 0.5:  # EMAs very close
+            choppy_score += 2
+            signals.append(f"EMA convergence ({ema_distance:.2f}%)")
     
     # 4. Narrow Support/Resistance range
     sr = indicators['support_resistance']
@@ -724,6 +728,36 @@ def calculate_all_indicators(df: pd.DataFrame) -> Dict:
         "rsi_7": calculate_rsi(df, period=7),  # Fast RSI for reversal detection
         "macd": calculate_macd(df),
         "ema": calculate_ema(df, [20, 50]),
+        "bollinger_bands": calculate_bollinger_bands(df),
+        "support_resistance": find_support_resistance(df),
+        "volume": calculate_volume_analysis(df),
+        "atr": calculate_atr(df),
+        "trend_pattern": detect_trend_pattern(df)
+    }
+    
+    # Detect choppy market
+    current_price = df['close'].iloc[-1]
+    indicators['market_condition'] = detect_choppy_market(indicators, current_price)
+    
+    return indicators
+
+
+def calculate_all_indicators_custom(df: pd.DataFrame, ema_periods: List[int] = [20, 50]) -> Dict:
+    """
+    Calculate all technical indicators with custom EMA periods
+    
+    Args:
+        df: DataFrame with OHLCV data
+        ema_periods: Custom EMA periods (e.g., [7, 25])
+        
+    Returns:
+        Dictionary with all indicators
+    """
+    indicators = {
+        "rsi": calculate_rsi(df, period=14),
+        "rsi_7": calculate_rsi(df, period=7),  # Fast RSI for reversal detection
+        "macd": calculate_macd(df),
+        "ema": calculate_ema(df, ema_periods),
         "bollinger_bands": calculate_bollinger_bands(df),
         "support_resistance": find_support_resistance(df),
         "volume": calculate_volume_analysis(df),

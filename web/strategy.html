@@ -200,17 +200,17 @@
         
         // Strategy config
         const strategyConfig = {
-            'structured': {
-                icon: '📐',
-                name: 'STRUCTURED',
-                badge: 'Technical + Rules',
-                badgeClass: 'badge-structured'
-            },
             'minimal': {
                 icon: '🤖',
                 name: 'MINIMAL',
-                badge: 'AI Free',
+                badge: 'AI Free (EMA 20/50)',
                 badgeClass: 'badge-minimal'
+            },
+            'minimal_e725': {
+                icon: '⚡',
+                name: 'MINIMAL E725',
+                badge: 'AI Fast (EMA 7/25)',
+                badgeClass: 'badge-minimal-e725'
             },
             'minimalbtc': {
                 icon: '₿',
@@ -227,14 +227,8 @@
             'intraday': {
                 icon: '⚡',
                 name: 'INTRADAY',
-                badge: 'Scalping',
+                badge: 'Scalping 5m',
                 badgeClass: 'badge-intraday'
-            },
-            'intraday2': {
-                icon: '🔄',
-                name: 'INTRADAY2',
-                badge: 'Mean Reversion',
-                badgeClass: 'badge-intraday2'
             }
         };
         

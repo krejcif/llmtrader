@@ -6,7 +6,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from models.state import TradingState
 from agents.data_collector_generic import collect_market_data_generic
-from agents.analysis_generic import analyze_market_generic
 from agents.decision_generic import make_decision_generic
 from agents.news_collector import collect_stock_news
 from agents.btc_collector import collect_btc_data
@@ -188,8 +187,8 @@ class DynamicTradingBot:
                 strategy.timeframe_lower
             )
             
-            # 2. Analyze market data
-            state = analyze_market_generic(
+            # 2. Analyze market data (using strategy-specific analysis function)
+            state = strategy.analysis_func(
                 state,
                 strategy.name,
                 strategy.timeframe_higher,

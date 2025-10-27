@@ -345,16 +345,16 @@ tbody tr:hover td {
     border: 1px solid;
 }
 
-.badge-structured {
-    background: #1e3a8a;
-    color: #93c5fd;
-    border-color: #3b82f6;
-}
-
 .badge-minimal {
     background: #064e3b;
     color: #6ee7b7;
     border-color: #10b981;
+}
+
+.badge-minimal-e725 {
+    background: #1e3a8a;
+    color: #93c5fd;
+    border-color: #3b82f6;
 }
 
 .badge-minimalbtc {
@@ -373,12 +373,6 @@ tbody tr:hover td {
     background: #831843;
     color: #f9a8d4;
     border-color: #ec4899;
-}
-
-.badge-intraday2 {
-    background: #581c87;
-    color: #d8b4fe;
-    border-color: #a855f7;
 }
 
 .badge.long {

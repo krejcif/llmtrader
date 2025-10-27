@@ -229,14 +229,14 @@
             align-self: center;
         }
         
-        .badge-structured {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        
         .badge-minimal {
             background: #fef3c7;
             color: #92400e;
+        }
+        
+        .badge-minimal-e725 {
+            background: #dbeafe;
+            color: #1e40af;
         }
         
         .badge-minimalbtc {
@@ -252,11 +252,6 @@
         .badge-intraday {
             background: #fee2e2;
             color: #991b1b;
-        }
-        
-        .badge-intraday2 {
-            background: #fce7f3;
-            color: #831843;
         }
         
         .trades-section {
@@ -478,29 +473,7 @@
                 </div>
             </div>
             
-            <!-- Structured -->
-            <div class="stat-card" onclick="window.location.href='/strategy?strategy=structured'">
-                <h3>📐 Structured</h3>
-                <div class="stat-value" id="structuredWinRate">--</div>
-                <div class="stat-label">Win Rate</div>
-                <div class="stat-details">
-                    <div class="stat-row">
-                        <span class="stat-row-label">Wins/Losses</span>
-                        <span class="stat-row-value" id="structuredWinLoss">--</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">P&L</span>
-                        <span class="stat-row-value" id="structuredPnL">$--</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Profit Factor</span>
-                        <span class="stat-row-value" id="structuredPF">--</span>
-                    </div>
-                </div>
-                <span class="strategy-badge badge-structured">Technical + Rules</span>
-            </div>
-            
-            <!-- Minimal -->
+            <!-- Minimal (EMA 20/50) -->
             <div class="stat-card" onclick="window.location.href='/strategy?strategy=minimal'">
                 <h3>🤖 Minimal</h3>
                 <div class="stat-value" id="minimalWinRate">--</div>
@@ -519,7 +492,29 @@
                         <span class="stat-row-value" id="minimalPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-minimal">AI Free</span>
+                <span class="strategy-badge badge-minimal">AI Free (EMA 20/50)</span>
+            </div>
+            
+            <!-- Minimal E725 (EMA 7/25) -->
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=minimal_e725'">
+                <h3>⚡ Minimal E725</h3>
+                <div class="stat-value" id="minimal_e725WinRate">--</div>
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-details">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Wins/Losses</span>
+                        <span class="stat-row-value" id="minimal_e725WinLoss">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">P&L</span>
+                        <span class="stat-row-value" id="minimal_e725PnL">$--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Profit Factor</span>
+                        <span class="stat-row-value" id="minimal_e725PF">--</span>
+                    </div>
+                </div>
+                <span class="strategy-badge badge-minimal-e725">AI Fast (EMA 7/25)</span>
             </div>
             
             <!-- MinimalBTC -->
@@ -585,29 +580,7 @@
                         <span class="stat-row-value" id="intradayPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-intraday">Scalping</span>
-            </div>
-            
-            <!-- Intraday2 -->
-            <div class="stat-card" onclick="window.location.href='/strategy?strategy=intraday2'">
-                <h3>🔄 Intraday2</h3>
-                <div class="stat-value" id="intraday2WinRate">--</div>
-                <div class="stat-label">Win Rate</div>
-                <div class="stat-details">
-                    <div class="stat-row">
-                        <span class="stat-row-label">Wins/Losses</span>
-                        <span class="stat-row-value" id="intraday2WinLoss">--</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">P&L</span>
-                        <span class="stat-row-value" id="intraday2PnL">$--</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Profit Factor</span>
-                        <span class="stat-row-value" id="intraday2PF">--</span>
-                    </div>
-                </div>
-                <span class="strategy-badge badge-intraday2">Mean Reversion</span>
+                <span class="strategy-badge badge-intraday">Scalping 5m</span>
             </div>
         </div>
         
@@ -626,12 +599,11 @@
             <!-- Filters -->
             <div class="filters">
                 <button class="filter-btn active" data-filter="all">All Trades</button>
-                <button class="filter-btn" data-filter="structured">📐 Structured</button>
                 <button class="filter-btn" data-filter="minimal">🤖 Minimal</button>
+                <button class="filter-btn" data-filter="minimal_e725">⚡ E725</button>
                 <button class="filter-btn" data-filter="minimalbtc">₿ MinimalBTC</button>
                 <button class="filter-btn" data-filter="macro">🌍 Macro</button>
                 <button class="filter-btn" data-filter="intraday">⚡ Intraday</button>
-                <button class="filter-btn" data-filter="intraday2">🔄 Intraday2</button>
                 <button class="filter-btn" data-filter="open">⏳ Open</button>
                 <button class="filter-btn" data-filter="closed">✅ Closed</button>
             </div>
@@ -836,20 +808,8 @@
                 document.getElementById('overallPF').textContent = 
                     data.overall.closed_trades > 0 ? `${data.overall.profit_factor.toFixed(2)}` : 'N/A';
                 
-                // Structured
-                const s = data.strategies.structured;
-                document.getElementById('structuredWinRate').textContent = 
-                    s.closed_trades > 0 ? `${s.win_rate.toFixed(1)}%` : 'N/A';
-                document.getElementById('structuredWinLoss').textContent = 
-                    `${s.wins}/${s.losses}`;
-                const structuredPnL = document.getElementById('structuredPnL');
-                structuredPnL.textContent = `$${s.total_pnl.toFixed(2)}`;
-                structuredPnL.style.color = s.total_pnl >= 0 ? '#10b981' : '#ef4444';
-                document.getElementById('structuredPF').textContent = 
-                    s.closed_trades > 0 ? `${s.profit_factor.toFixed(2)}` : 'N/A';
-                
                 // Minimal
-                const m = data.strategies.minimal;
+                const m = data.strategies.minimal || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
                 document.getElementById('minimalWinRate').textContent = 
                     m.closed_trades > 0 ? `${m.win_rate.toFixed(1)}%` : 'N/A';
                 document.getElementById('minimalWinLoss').textContent = 
@@ -859,6 +819,18 @@
                 minimalPnL.style.color = m.total_pnl >= 0 ? '#10b981' : '#ef4444';
                 document.getElementById('minimalPF').textContent = 
                     m.closed_trades > 0 ? `${m.profit_factor.toFixed(2)}` : 'N/A';
+                
+                // Minimal E725
+                const me = data.strategies.minimal_e725 || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
+                document.getElementById('minimal_e725WinRate').textContent = 
+                    me.closed_trades > 0 ? `${me.win_rate.toFixed(1)}%` : 'N/A';
+                document.getElementById('minimal_e725WinLoss').textContent = 
+                    `${me.wins}/${me.losses}`;
+                const minimal_e725PnL = document.getElementById('minimal_e725PnL');
+                minimal_e725PnL.textContent = `$${me.total_pnl.toFixed(2)}`;
+                minimal_e725PnL.style.color = me.total_pnl >= 0 ? '#10b981' : '#ef4444';
+                document.getElementById('minimal_e725PF').textContent = 
+                    me.closed_trades > 0 ? `${me.profit_factor.toFixed(2)}` : 'N/A';
                 
                 // MinimalBTC
                 const mbtc = data.strategies.minimalbtc || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
@@ -896,17 +868,6 @@
                 document.getElementById('intradayPF').textContent = 
                     id.closed_trades > 0 ? `${id.profit_factor.toFixed(2)}` : 'N/A';
                 
-                // Intraday2
-                const id2 = data.strategies.intraday2 || {closed_trades: 0, win_rate: 0, total_pnl: 0, profit_factor: 0, wins: 0, losses: 0};
-                document.getElementById('intraday2WinRate').textContent = 
-                    id2.closed_trades > 0 ? `${id2.win_rate.toFixed(1)}%` : 'N/A';
-                document.getElementById('intraday2WinLoss').textContent = 
-                    `${id2.wins}/${id2.losses}`;
-                const intraday2PnL = document.getElementById('intraday2PnL');
-                intraday2PnL.textContent = `$${id2.total_pnl.toFixed(2)}`;
-                intraday2PnL.style.color = id2.total_pnl >= 0 ? '#10b981' : '#ef4444';
-                document.getElementById('intraday2PF').textContent = 
-                    id2.closed_trades > 0 ? `${id2.profit_factor.toFixed(2)}` : 'N/A';
                 
             } catch (error) {
                 console.error('Error loading stats:', error);
