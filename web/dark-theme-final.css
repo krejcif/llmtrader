@@ -690,3 +690,33 @@ tbody tr:hover td {
     font-size: 14px;
 }
 
+/* AI Analysis Text */
+.ai-analysis-text {
+    color: #e2e8f0;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    max-height: 800px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.ai-analysis-text::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ai-analysis-text::-webkit-scrollbar-track {
+    background: #0f172a;
+    border-radius: 4px;
+}
+
+.ai-analysis-text::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+.ai-analysis-text::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+

@@ -149,6 +149,24 @@
             </div>
         </div>
         
+        <!-- AI Strategy Analysis -->
+        <div class="chart-grid">
+            <div class="chart-section full-width">
+                <h2 class="section-title">🤖 AI Performance Analysis</h2>
+                <div id="aiAnalysisContainer" style="background: #1e293b; border-radius: 8px; padding: 25px; min-height: 100px;">
+                    <div id="aiAnalysisLoading" style="text-align: center; color: #64748b;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                        <div>Loading AI analysis...</div>
+                    </div>
+                    <div id="aiAnalysisContent" class="ai-analysis-text" style="display: none;"></div>
+                    <div id="aiAnalysisError" style="display: none; color: #f87171; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">⚠️</div>
+                        <div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Recent Trades Section -->
         <div class="chart-grid">
             <!-- Recent Trades -->
@@ -251,9 +269,41 @@
                 // Update recent trades
                 updateRecentTrades(data.recent_trades);
                 
+                // Load AI analysis
+                loadAIAnalysis();
+                
             } catch (error) {
                 console.error('Error loading strategy detail:', error);
                 showEmptyState();
+            }
+        }
+        
+        async function loadAIAnalysis() {
+            try {
+                const response = await fetch(`/api/strategy-ai-analysis/${strategy}`);
+                const data = await response.json();
+                
+                const loadingEl = document.getElementById('aiAnalysisLoading');
+                const contentEl = document.getElementById('aiAnalysisContent');
+                const errorEl = document.getElementById('aiAnalysisError');
+                
+                loadingEl.style.display = 'none';
+                
+                if (data.success && data.analysis) {
+                    contentEl.textContent = data.analysis;
+                    contentEl.style.display = 'block';
+                } else {
+                    errorEl.querySelector('div:last-child').textContent = data.analysis || 'Failed to load AI analysis';
+                    errorEl.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading AI analysis:', error);
+                const loadingEl = document.getElementById('aiAnalysisLoading');
+                const errorEl = document.getElementById('aiAnalysisError');
+                
+                loadingEl.style.display = 'none';
+                errorEl.querySelector('div:last-child').textContent = 'Network error loading AI analysis';
+                errorEl.style.display = 'block';
             }
         }
         

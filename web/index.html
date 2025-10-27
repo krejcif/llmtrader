@@ -16,7 +16,8 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #0a0e1a;
+            color: #e2e8f0;
             min-height: 100vh;
             padding: 20px;
         }
@@ -27,7 +28,8 @@
         }
         
         .header {
-            background: white;
+            background: #151b2b;
+            border: 1px solid #1e293b;
             border-radius: 15px;
             padding: 25px 35px;
             margin-bottom: 20px;
@@ -109,7 +111,7 @@
         
         .nav-link {
             padding: 10px 20px;
-            background: white;
+            background: #1e293b;
             border: 2px solid #667eea;
             color: #667eea;
             border-radius: 10px;
@@ -258,7 +260,8 @@
         }
         
         .trades-section {
-            background: white;
+            background: #151b2b;
+            border: 1px solid #1e293b;
             border-radius: 15px;
             padding: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
@@ -273,8 +276,9 @@
         
         .filter-btn {
             padding: 10px 20px;
-            border: 2px solid #e5e7eb;
-            background: white;
+            border: 2px solid #334155;
+            background: #1e293b;
+            color: #e2e8f0;
             border-radius: 10px;
             cursor: pointer;
             font-weight: 600;
@@ -1043,6 +1047,30 @@
                 }
             } catch (error) {
                 console.error('Error loading bot status:', error);
+            }
+        }
+        
+        async function closeTrade(tradeId) {
+            if (!confirm(`Close trade ${tradeId} at current market price?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/close-trade/${tradeId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    alert(`✅ Trade closed!\n\nP&L: $${data.pnl.toFixed(2)} (${data.pnl_percentage.toFixed(2)}%)\nExit: $${data.exit_price.toFixed(2)}`);
+                    await loadData();
+                } else {
+                    alert(`❌ Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error closing trade:', error);
+                alert(`❌ Failed: ${error.message}`);
             }
         }
         

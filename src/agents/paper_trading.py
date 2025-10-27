@@ -98,12 +98,20 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                 
                 if opposite_direction:
                     # Close all open trades for this strategy (on opposite signal)
-                    current_price = strategy_market_data.get('current_price') if strategy_market_data else market_data.get('current_price')
+                    # Use last CLOSED candle price (not ticker) to avoid look-ahead bias
+                    tf_lower = strategy_analysis.get('indicators', {}).get('lower_tf', {}).get('timeframe')
+                    if tf_lower and strategy_market_data and 'timeframes' in strategy_market_data:
+                        candles = strategy_market_data['timeframes'][tf_lower]
+                        current_price = float(candles['close'].iloc[-1])
+                    else:
+                        # Fallback to ticker only if closed candle data not available
+                        current_price = strategy_market_data.get('current_price') if strategy_market_data else market_data.get('current_price')
+                        print(f"⚠️  WARNING: Using ticker price as fallback (no closed candle data)")
                     from datetime import datetime as dt, timezone
                     
                     print(f"🔄 [{strategy_name.upper()}] OPPOSITE SIGNAL detected!")
                     print(f"   Closing {len(strategy_open)} {existing_direction} trade(s) on {action} signal")
-                    print(f"   Exit price: ${current_price:.2f} (close of last candle)")
+                    print(f"   Exit price: ${current_price:.2f} (last closed candle)")
                     
                     for trade in strategy_open:
                         try:

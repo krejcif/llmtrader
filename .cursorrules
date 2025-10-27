@@ -1,0 +1,40 @@
+# Trading Bot Project Rules
+
+## Design & UI
+
+### DARK THEME - DO NOT CHANGE!
+**The web dashboard uses a DARK theme. NEVER change it to light theme.**
+
+Key colors:
+- Background: `#0a0e1a`
+- Card background: `#151b2b`
+- Border: `#1e293b`, `#334155`
+- Text: `#e2e8f0`
+- NEVER use: `background: white` or light gradients
+
+All pages (index.html, logs.html, strategy.html) use inline dark styles.
+
+### Code Changes
+- When adding new features to web UI, only modify what's needed
+- Don't refactor existing working styles
+- Keep inline `<style>` tags, don't extract to external CSS
+
+## Trading Strategies
+
+- Multiple strategies run simultaneously on different timeframes
+- intraday: 5m/15m (fast momentum)
+- minimal/minimalbtc: 15m/1h
+- macro: 1h/4h (big picture)
+
+## Database
+- SQLite in `data/trading.db`
+- Trades table has NO 'size' or 'side' columns
+- Use 'action' column for LONG/SHORT
+
+## API
+- Close trade endpoint: `/api/close-trade/<trade_id>`
+- Uses `db.close_trade()` method (handles P&L with fees)
+- Get current price from BinanceClient, not manual calculations
+
+
+

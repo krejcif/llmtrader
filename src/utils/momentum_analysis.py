@@ -337,3 +337,5 @@ def analyze_current_candle(candles: pd.DataFrame) -> Dict:
         'is_bullish': body > 0
     }
 
+
+

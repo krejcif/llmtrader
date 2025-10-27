@@ -10,6 +10,8 @@ import sqlite3
 import json
 from datetime import datetime, timedelta
 from collections import defaultdict
+import requests
+import config
 
 app = Flask(__name__, static_folder='../web', static_url_path='')
 CORS(app)
@@ -296,72 +298,64 @@ def get_strategy_runs():
 
 
 @app.route('/api/close-trade/<trade_id>', methods=['POST'])
-def close_trade(trade_id):
+def close_trade_api(trade_id):
     """Close an open trade at current market price"""
     try:
         from utils.binance_client import BinanceClient
+        import sqlite3
         
+        # Check if trade exists and is open
         conn = sqlite3.connect(db.db_path)
         cursor = conn.cursor()
+        cursor.execute('SELECT status, symbol, action, entry_price FROM trades WHERE trade_id = ?', (trade_id,))
+        trade = cursor.fetchone()
+        conn.close()
         
-        # Get trade details
-        cursor.execute('SELECT * FROM trades WHERE trade_id = ?', (trade_id,))
-        columns = [col[0] for col in cursor.description]
-        trade_row = cursor.fetchone()
-        
-        if not trade_row:
-            conn.close()
+        if not trade:
             return jsonify({'error': 'Trade not found'}), 404
         
-        trade = dict(zip(columns, trade_row))
+        status, symbol, action, entry_price = trade
         
-        # Check if trade is already closed
-        if trade['status'] == 'CLOSED':
-            conn.close()
+        if status == 'CLOSED':
             return jsonify({'error': 'Trade is already closed'}), 400
         
         # Get current market price
         client = BinanceClient()
-        current_price = client.get_current_price(trade['symbol'])
+        current_price = client.get_current_price(symbol)
         
-        # Calculate P&L
-        entry_price = trade['entry_price']
-        size = trade['size']
-        side = trade['side']
-        
-        if side == 'LONG':
-            pnl = (current_price - entry_price) * size
-            pnl_percentage = ((current_price - entry_price) / entry_price) * 100
-        else:  # SHORT
-            pnl = (entry_price - current_price) * size
-            pnl_percentage = ((entry_price - current_price) / entry_price) * 100
-        
-        # Calculate exit fee (0.05% for taker)
-        exit_fee = abs(current_price * size * 0.0005)
-        
-        # Subtract exit fee from P&L
-        pnl_after_fees = pnl - exit_fee
-        
-        # Close the trade
+        # Close trade using database function (handles P&L calculation with fees)
         db.close_trade(
             trade_id=trade_id,
             exit_price=current_price,
-            exit_reason='MANUAL_CLOSE',
-            pnl=pnl_after_fees
+            exit_reason='MANUAL_CLOSE'
         )
         
+        # Calculate P&L percentage for response (before fees for display)
+        if action == 'LONG':
+            pnl_pct = ((current_price - entry_price) / entry_price) * 100
+        else:  # SHORT
+            pnl_pct = ((entry_price - current_price) / entry_price) * 100
+        
+        # Get actual P&L after fees from database
+        conn = sqlite3.connect(db.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT pnl, pnl_percentage FROM trades WHERE trade_id = ?', (trade_id,))
+        result = cursor.fetchone()
         conn.close()
+        
+        actual_pnl, actual_pnl_pct = result if result else (0, 0)
         
         return jsonify({
             'success': True,
             'message': f'Trade {trade_id} closed successfully',
             'exit_price': current_price,
-            'pnl': pnl_after_fees,
-            'pnl_percentage': pnl_percentage,
-            'exit_fee': exit_fee
+            'pnl': actual_pnl,
+            'pnl_percentage': actual_pnl_pct
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'error': str(e)
         }), 500
@@ -408,7 +402,7 @@ def get_strategy_detail():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Get all closed trades for this strategy
+        # Get all closed trades for this strategy (for analysis)
         cursor.execute("""
             SELECT *  FROM trades
             WHERE strategy = ? AND status = 'CLOSED' AND valid = 1
@@ -416,9 +410,9 @@ def get_strategy_detail():
         """, (strategy,))
         
         trades = cursor.fetchall()
-        conn.close()
         
         if len(trades) == 0:
+            conn.close()
             return jsonify({'error': 'No trades found for this strategy'})
         
         # Calculate KPIs
@@ -682,23 +676,44 @@ def get_strategy_detail():
             'recovery_factor': recovery_factor
         }
         
-        # Recent trades (last 10)
+        # Recent trades (last 10) - get ALL trades (OPEN + CLOSED) to match index filter
+        cursor.execute("""
+            SELECT * FROM trades
+            WHERE strategy = ? AND valid = 1
+            ORDER BY entry_time DESC
+            LIMIT 10
+        """, (strategy,))
+        recent_trades_raw = cursor.fetchall()
+        
         recent = []
-        for t in list(trades)[-10:]:
+        for t in recent_trades_raw:
             try:
                 entry_clean = t['entry_time'].replace('Z', '+00:00')
-                exit_clean = t['exit_time'].replace('Z', '+00:00')
                 entry_time = datetime.fromisoformat(entry_clean)
-                exit_time = datetime.fromisoformat(exit_clean)
                 
-                recent.append({
-                    'entry_time': entry_time.strftime('%m/%d %H:%M'),
-                    'exit_time': exit_time.strftime('%m/%d %H:%M'),
-                    'action': t['action'],
-                    'pnl': round(t['pnl'], 2)
-                })
-            except:
+                # For CLOSED trades, show exit time and P&L
+                if t['status'] == 'CLOSED' and t['exit_time']:
+                    exit_clean = t['exit_time'].replace('Z', '+00:00')
+                    exit_time = datetime.fromisoformat(exit_clean)
+                    recent.append({
+                        'entry_time': entry_time.strftime('%m/%d %H:%M'),
+                        'exit_time': exit_time.strftime('%m/%d %H:%M'),
+                        'action': t['action'],
+                        'pnl': round(t['pnl'], 2)
+                    })
+                else:
+                    # For OPEN trades, show "OPEN" as exit
+                    recent.append({
+                        'entry_time': entry_time.strftime('%m/%d %H:%M'),
+                        'exit_time': 'OPEN',
+                        'action': t['action'],
+                        'pnl': 0  # Open trade, no P&L yet
+                    })
+            except Exception as e:
+                print(f"Error parsing trade: {e}")
                 pass
+        
+        conn.close()
         
         return jsonify({
             'kpis': kpis,
@@ -714,6 +729,237 @@ def get_strategy_detail():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/strategy-ai-analysis/<strategy_name>')
+def get_strategy_ai_analysis(strategy_name):
+    """Get AI analysis of strategy performance metrics using DeepSeek"""
+    try:
+        # Get trades for this strategy
+        conn = sqlite3.connect(db.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT * FROM trades
+            WHERE strategy = ? AND status = 'CLOSED' AND valid = 1
+            ORDER BY exit_time ASC
+        """, (strategy_name,))
+        
+        trades = cursor.fetchall()
+        conn.close()
+        
+        if len(trades) == 0:
+            return jsonify({
+                'success': False,
+                'analysis': 'Insufficient data for analysis. No trades found for this strategy.'
+            })
+        
+        # Load decision code for this strategy
+        decision_code = ""
+        decision_file = f"agents/decision_{strategy_name}.py"
+        decision_path = os.path.join(os.path.dirname(__file__), decision_file)
+        
+        if os.path.exists(decision_path):
+            try:
+                with open(decision_path, 'r') as f:
+                    decision_code = f.read()
+            except Exception as e:
+                print(f"Warning: Could not read decision file: {e}")
+                decision_code = "Decision code not available"
+        else:
+            decision_code = f"Decision file not found: {decision_file}"
+        
+        # Calculate metrics
+        import math
+        
+        wins = sum(1 for t in trades if t['pnl'] > 0)
+        losses = sum(1 for t in trades if t['pnl'] < 0)
+        total_trades = len(trades)
+        win_rate = (wins / total_trades * 100) if total_trades > 0 else 0
+        
+        total_pnl = sum(t['pnl'] for t in trades)
+        starting_capital = 10000
+        pnl_percent = (total_pnl / starting_capital * 100)
+        
+        total_wins_amount = sum(t['pnl'] for t in trades if t['pnl'] > 0)
+        total_losses_amount = sum(abs(t['pnl']) for t in trades if t['pnl'] < 0)
+        profit_factor = (total_wins_amount / total_losses_amount) if total_losses_amount > 0 else 0
+        
+        avg_win = (total_wins_amount / wins) if wins > 0 else 0
+        avg_loss = -(total_losses_amount / losses) if losses > 0 else 0
+        
+        # Sharpe Ratio
+        if total_trades > 1:
+            pnl_list = [t['pnl'] for t in trades]
+            mean_pnl = sum(pnl_list) / len(pnl_list)
+            variance = sum((x - mean_pnl) ** 2 for x in pnl_list) / (len(pnl_list) - 1)
+            std_dev = math.sqrt(variance)
+            sharpe = (mean_pnl / std_dev * math.sqrt(252)) if std_dev > 0 else 0
+        else:
+            sharpe = 0
+        
+        # Sortino Ratio
+        if total_trades > 1:
+            pnl_list = [t['pnl'] for t in trades]
+            mean_pnl = sum(pnl_list) / len(pnl_list)
+            downside_returns = [x for x in pnl_list if x < 0]
+            if downside_returns:
+                downside_var = sum(x ** 2 for x in downside_returns) / len(downside_returns)
+                downside_std = math.sqrt(downside_var)
+                sortino = (mean_pnl / downside_std * math.sqrt(252)) if downside_std > 0 else 0
+            else:
+                sortino = float('inf')
+        else:
+            sortino = 0
+        
+        # Max Drawdown
+        peak = starting_capital
+        max_dd = 0
+        current = starting_capital
+        for t in trades:
+            current += t['pnl']
+            if current > peak:
+                peak = current
+            dd = ((peak - current) / peak * 100) if peak > 0 else 0
+            if dd > max_dd:
+                max_dd = dd
+        
+        # Calmar Ratio
+        calmar = (pnl_percent / max_dd) if max_dd > 0 else 0
+        
+        # Expectancy
+        expectancy = (win_rate / 100 * avg_win) + ((100 - win_rate) / 100 * avg_loss)
+        
+        # Kelly %
+        if losses > 0 and avg_loss != 0:
+            win_prob = win_rate / 100
+            loss_prob = 1 - win_prob
+            kelly = (win_prob / abs(avg_loss)) - (loss_prob / avg_win) if avg_win > 0 else 0
+            kelly_percent = max(0, min(kelly * 100, 100))
+        else:
+            kelly_percent = 0
+        
+        best_trade = max(t['pnl'] for t in trades) if trades else 0
+        worst_trade = min(t['pnl'] for t in trades) if trades else 0
+        
+        # Win/Loss streaks
+        max_win_streak = 0
+        max_loss_streak = 0
+        current_win_streak = 0
+        current_loss_streak = 0
+        
+        for t in trades:
+            if t['pnl'] > 0:
+                current_win_streak += 1
+                current_loss_streak = 0
+                max_win_streak = max(max_win_streak, current_win_streak)
+            elif t['pnl'] < 0:
+                current_loss_streak += 1
+                current_win_streak = 0
+                max_loss_streak = max(max_loss_streak, current_loss_streak)
+        
+        # Prepare metrics for AI
+        sortino_str = f"{sortino:.2f}" if sortino != float('inf') else "∞"
+        
+        metrics_text = f"""
+Strategy: {strategy_name}
+Total Trades: {total_trades}
+Win Rate: {win_rate:.1f}% ({wins} wins, {losses} losses)
+Total P&L: ${total_pnl:.2f} ({pnl_percent:.2f}%)
+Profit Factor: {profit_factor:.2f}
+Average Win: ${avg_win:.2f}
+Average Loss: ${abs(avg_loss):.2f}
+Sharpe Ratio: {sharpe:.2f}
+Sortino Ratio: {sortino_str}
+Calmar Ratio: {calmar:.2f}
+Max Drawdown: {max_dd:.2f}%
+Expectancy: ${expectancy:.2f}
+Kelly %: {kelly_percent:.1f}%
+Best Trade: ${best_trade:.2f}
+Worst Trade: ${worst_trade:.2f}
+Win/Loss Streaks: {max_win_streak} / {max_loss_streak}
+"""
+        
+        # Prepare code section
+        code_section = f"""
+
+STRATEGY CODE:
+```python
+{decision_code}
+```
+"""
+
+        # Call DeepSeek API
+        prompt = f"""Analyze this trading strategy by examining both its performance metrics AND its decision-making code.
+
+PERFORMANCE METRICS:
+{metrics_text}
+{code_section}
+
+Provide a comprehensive analysis:
+
+1. **Overall Performance Assessment** (2-3 sentences)
+   - Comment on both metrics AND code quality/logic
+
+2. **Key Strengths** (3-4 bullet points)
+   - Include both metric strengths and code strengths (e.g., risk management, logic clarity)
+
+3. **Key Weaknesses or Risks** (3-4 bullet points)
+   - Include both metric weaknesses and code issues (e.g., overfitting, hardcoded values, missing edge cases)
+
+4. **Practical Recommendations** (3-4 bullet points)
+   - Suggest specific code improvements and parameter adjustments
+   - Focus on actionable changes to the strategy code
+
+Keep analysis concise but technical. Use plain language but don't shy away from specific code critiques."""
+
+        response = requests.post(
+            f"{config.DEEPSEEK_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {config.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a professional trading strategy analyst and Python developer. Analyze both performance metrics and code quality of trading strategies. Provide clear, technical, and actionable insights."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 1500
+            },
+            timeout=45
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            analysis = result['choices'][0]['message']['content']
+            
+            return jsonify({
+                'success': True,
+                'analysis': analysis
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'analysis': f'AI analysis unavailable (API error: {response.status_code})'
+            })
+            
+    except Exception as e:
+        print(f"Error generating AI analysis: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'analysis': f'Error generating analysis: {str(e)}'
+        })
 
 
 if __name__ == '__main__':
