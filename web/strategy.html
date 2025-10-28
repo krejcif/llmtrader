@@ -17,6 +17,10 @@
                     <span>←</span>
                     <span>Dashboard</span>
                 </a>
+                <a href="/live" class="back-btn" style="margin-left: 10px;">
+                    <span>📡</span>
+                    <span>Live</span>
+                </a>
                 <div class="strategy-title">
                     <span class="strategy-icon" id="strategyIcon">📊</span>
                     <h1 class="strategy-name" id="strategyName">Loading...</h1>
@@ -149,8 +153,8 @@
             </div>
         </div>
         
-        <!-- AI Strategy Analysis -->
-        <div class="chart-grid">
+        <!-- AI Strategy Analysis (hide for overall) -->
+        <div class="chart-grid" id="aiAnalysisSection">
             <div class="chart-section full-width">
                 <h2 class="section-title">🤖 AI Performance Analysis</h2>
                 <div id="aiAnalysisContainer" style="background: #1e293b; border-radius: 8px; padding: 25px; min-height: 100px;">
@@ -200,6 +204,36 @@
         
         // Strategy config
         const strategyConfig = {
+            'overall': {
+                icon: '📊',
+                name: 'OVERALL PERFORMANCE',
+                badge: 'All Strategies Combined',
+                badgeClass: 'badge-overall'
+            },
+            'sol': {
+                icon: '◎',
+                name: 'SOL',
+                badge: 'AI Free (EMA 20/50)',
+                badgeClass: 'badge-sol'
+            },
+            'sol_fast': {
+                icon: '◎',
+                name: 'SOL Fast',
+                badge: 'AI Fast (EMA 7/25)',
+                badgeClass: 'badge-sol-e725'
+            },
+            'eth': {
+                icon: 'Ξ',
+                name: 'ETH',
+                badge: 'AI Free (EMA 20/50)',
+                badgeClass: 'badge-eth'
+            },
+            'eth_fast': {
+                icon: 'Ξ',
+                name: 'ETH Fast',
+                badge: 'AI Fast (EMA 7/25)',
+                badgeClass: 'badge-eth-e725'
+            },
             'minimal': {
                 icon: '🤖',
                 name: 'MINIMAL',
@@ -263,7 +297,7 @@
                 // Update recent trades
                 updateRecentTrades(data.recent_trades);
                 
-                // Load AI analysis
+                // Load AI analysis for all strategies including overall
                 loadAIAnalysis();
                 
             } catch (error) {

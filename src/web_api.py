@@ -38,6 +38,12 @@ def strategy():
     return send_from_directory('../web', 'strategy.html')
 
 
+@app.route('/live')
+def live():
+    """Serve live trading page"""
+    return send_from_directory('../web', 'live.html')
+
+
 @app.route('/api/stats')
 def get_stats():
     """Get overall and per-strategy statistics"""
@@ -400,12 +406,19 @@ def get_strategy_detail():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Get all closed trades for this strategy (for analysis)
-        cursor.execute("""
-            SELECT *  FROM trades
-            WHERE strategy = ? AND status = 'CLOSED' AND valid = 1
-            ORDER BY exit_time ASC
-        """, (strategy,))
+        # Get all closed trades for this strategy (or all strategies if "overall")
+        if strategy == 'overall':
+            cursor.execute("""
+                SELECT *  FROM trades
+                WHERE status = 'CLOSED' AND valid = 1
+                ORDER BY exit_time ASC
+            """)
+        else:
+            cursor.execute("""
+                SELECT *  FROM trades
+                WHERE strategy = ? AND status = 'CLOSED' AND valid = 1
+                ORDER BY exit_time ASC
+            """, (strategy,))
         
         trades = cursor.fetchall()
         
@@ -675,12 +688,20 @@ def get_strategy_detail():
         }
         
         # Recent trades (last 10) - get ALL trades (OPEN + CLOSED) to match index filter
-        cursor.execute("""
-            SELECT * FROM trades
-            WHERE strategy = ? AND valid = 1
-            ORDER BY entry_time DESC
-            LIMIT 10
-        """, (strategy,))
+        if strategy == 'overall':
+            cursor.execute("""
+                SELECT * FROM trades
+                WHERE valid = 1
+                ORDER BY entry_time DESC
+                LIMIT 10
+            """)
+        else:
+            cursor.execute("""
+                SELECT * FROM trades
+                WHERE strategy = ? AND valid = 1
+                ORDER BY entry_time DESC
+                LIMIT 10
+            """, (strategy,))
         recent_trades_raw = cursor.fetchall()
         
         recent = []
@@ -729,20 +750,339 @@ def get_strategy_detail():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/binance-account')
+def get_binance_account():
+    """Get comprehensive Binance Futures account overview"""
+    try:
+        from utils.binance_client import BinanceClient
+        
+        client = BinanceClient()
+        is_demo = client.demo
+        
+        # Get account balance
+        account = client.client.futures_account()
+        
+        # Get all positions
+        positions = client.client.futures_position_information()
+        
+        # Get open orders
+        open_orders = client.client.futures_get_open_orders()
+        
+        # Calculate total wallet balance
+        total_wallet_balance = float(account['totalWalletBalance'])
+        total_unrealized_profit = float(account['totalUnrealizedProfit'])
+        total_margin_balance = float(account['totalMarginBalance'])
+        available_balance = float(account['availableBalance'])
+        
+        # Process assets (only non-zero balances)
+        assets = []
+        for asset in account['assets']:
+            balance = float(asset['walletBalance'])
+            if balance > 0:
+                assets.append({
+                    'asset': asset['asset'],
+                    'wallet_balance': balance,
+                    'unrealized_profit': float(asset['unrealizedProfit']),
+                    'margin_balance': float(asset['marginBalance']),
+                    'available_balance': float(asset['availableBalance'])
+                })
+        
+        # Process positions (only open positions)
+        active_positions = []
+        for pos in positions:
+            position_amt = float(pos['positionAmt'])
+            if position_amt != 0:
+                unrealized_pnl = float(pos['unRealizedProfit'])
+                entry_price = float(pos['entryPrice'])
+                mark_price = float(pos['markPrice'])
+                
+                active_positions.append({
+                    'symbol': pos['symbol'],
+                    'position_side': pos.get('positionSide', 'BOTH'),
+                    'position_amt': position_amt,
+                    'entry_price': entry_price,
+                    'mark_price': mark_price,
+                    'unrealized_pnl': unrealized_pnl,
+                    'leverage': int(pos.get('leverage', 1)),
+                    'margin_type': pos.get('marginType', 'cross'),
+                    'liquidation_price': float(pos.get('liquidationPrice', 0)) if pos.get('liquidationPrice') else 0
+                })
+        
+        # Process open orders
+        formatted_orders = []
+        for order in open_orders:
+            formatted_orders.append({
+                'symbol': order['symbol'],
+                'side': order['side'],
+                'type': order['type'],
+                'price': float(order['price']),
+                'orig_qty': float(order['origQty']),
+                'executed_qty': float(order['executedQty']),
+                'status': order['status'],
+                'time': order['time']
+            })
+        
+        # Get account statistics
+        total_positions = len(active_positions)
+        total_orders = len(formatted_orders)
+        
+        return jsonify({
+            'success': True,
+            'demo_mode': is_demo,
+            'account': {
+                'total_wallet_balance': total_wallet_balance,
+                'total_unrealized_profit': total_unrealized_profit,
+                'total_margin_balance': total_margin_balance,
+                'available_balance': available_balance,
+                'can_trade': account['canTrade'],
+                'can_withdraw': account['canWithdraw']
+            },
+            'assets': assets,
+            'positions': active_positions,
+            'orders': formatted_orders,
+            'statistics': {
+                'total_positions': total_positions,
+                'total_orders': total_orders
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/binance-analytics')
+def get_binance_analytics():
+    """Get comprehensive analytics for Binance account"""
+    try:
+        from utils.binance_client import BinanceClient
+        from datetime import datetime, timedelta
+        
+        client = BinanceClient()
+        
+        # Get account info
+        account = client.client.futures_account()
+        positions = client.client.futures_position_information()
+        
+        # Calculate current balance
+        current_balance = float(account['totalWalletBalance'])
+        unrealized_pnl = float(account['totalUnrealizedProfit'])
+        
+        # Get account balance history (income history for last 30 days)
+        now = datetime.now()
+        start_time = int((now - timedelta(days=30)).timestamp() * 1000)
+        
+        try:
+            income_history = client.client.futures_income_history(
+                startTime=start_time,
+                limit=1000
+            )
+        except:
+            income_history = []
+        
+        # Build equity curve data
+        equity_data = {}
+        realized_pnl_total = 0
+        
+        for item in income_history:
+            timestamp = item['time']
+            date_str = datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+            income = float(item['income'])
+            
+            if item['incomeType'] in ['REALIZED_PNL', 'COMMISSION', 'FUNDING_FEE']:
+                if date_str not in equity_data:
+                    equity_data[date_str] = {'realized_pnl': 0, 'funding': 0, 'commission': 0}
+                
+                if item['incomeType'] == 'REALIZED_PNL':
+                    equity_data[date_str]['realized_pnl'] += income
+                    realized_pnl_total += income
+                elif item['incomeType'] == 'FUNDING_FEE':
+                    equity_data[date_str]['funding'] += income
+                elif item['incomeType'] == 'COMMISSION':
+                    equity_data[date_str]['commission'] += income
+        
+        # Calculate daily equity values
+        equity_curve = []
+        cumulative_pnl = 0
+        starting_balance = current_balance - unrealized_pnl - realized_pnl_total
+        
+        sorted_dates = sorted(equity_data.keys())
+        for date in sorted_dates:
+            daily_data = equity_data[date]
+            cumulative_pnl += daily_data['realized_pnl'] + daily_data['funding'] + daily_data['commission']
+            equity_curve.append({
+                'date': date,
+                'balance': starting_balance + cumulative_pnl,
+                'realized_pnl': daily_data['realized_pnl'],
+                'funding': daily_data['funding'],
+                'commission': daily_data['commission']
+            })
+        
+        # Add today's point
+        equity_curve.append({
+            'date': now.strftime('%Y-%m-%d'),
+            'balance': current_balance,
+            'realized_pnl': 0,
+            'funding': 0,
+            'commission': 0
+        })
+        
+        # Calculate performance metrics
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = now - timedelta(days=7)
+        month_start = now - timedelta(days=30)
+        
+        today_pnl = sum(item['realized_pnl'] for item in equity_curve if item['date'] == now.strftime('%Y-%m-%d'))
+        week_pnl = sum(item['realized_pnl'] for date_str, item in zip(sorted_dates, equity_curve) if datetime.strptime(date_str, '%Y-%m-%d') >= week_start)
+        month_pnl = realized_pnl_total
+        
+        # Calculate portfolio distribution by symbol
+        portfolio_distribution = {}
+        total_position_value = 0
+        
+        for pos in positions:
+            position_amt = float(pos['positionAmt'])
+            if position_amt != 0:
+                mark_price = float(pos['markPrice'])
+                position_value = abs(position_amt * mark_price)
+                symbol = pos['symbol']
+                
+                portfolio_distribution[symbol] = {
+                    'value': position_value,
+                    'unrealized_pnl': float(pos['unRealizedProfit']),
+                    'percentage': 0  # Will calculate after
+                }
+                total_position_value += position_value
+        
+        # Calculate percentages
+        for symbol in portfolio_distribution:
+            if total_position_value > 0:
+                portfolio_distribution[symbol]['percentage'] = (
+                    portfolio_distribution[symbol]['value'] / total_position_value * 100
+                )
+        
+        # Risk metrics
+        margin_balance = float(account['totalMarginBalance'])
+        available_balance = float(account['availableBalance'])
+        total_maintenance_margin = float(account['totalMaintMargin'])
+        
+        # Calculate used margin (initial margin) = margin_balance - available_balance
+        used_margin = margin_balance - available_balance
+        
+        # Margin Usage should show % of used margin, not maintenance margin
+        margin_usage = (used_margin / margin_balance * 100) if margin_balance > 0 else 0
+        exposure_ratio = (total_position_value / margin_balance * 100) if margin_balance > 0 else 0
+        
+        # Calculate risk score (1-5)
+        risk_score = 1
+        if margin_usage > 80:
+            risk_score = 5
+        elif margin_usage > 60:
+            risk_score = 4
+        elif margin_usage > 40:
+            risk_score = 3
+        elif margin_usage > 20:
+            risk_score = 2
+        
+        # Funding rate data
+        funding_rates = []
+        for pos in positions:
+            position_amt = float(pos['positionAmt'])
+            if position_amt != 0:
+                symbol = pos['symbol']
+                try:
+                    funding_info = client.client.futures_funding_rate(symbol=symbol, limit=1)
+                    if funding_info:
+                        funding_rate = float(funding_info[0]['fundingRate'])
+                        mark_price = float(pos['markPrice'])
+                        position_value = abs(position_amt * mark_price)
+                        
+                        # Calculate 8h funding cost
+                        funding_cost = position_value * funding_rate
+                        if position_amt > 0:  # LONG pays funding if rate is positive
+                            funding_cost = -funding_cost if funding_rate > 0 else abs(funding_cost)
+                        else:  # SHORT pays funding if rate is negative
+                            funding_cost = funding_cost if funding_rate > 0 else -abs(funding_cost)
+                        
+                        funding_rates.append({
+                            'symbol': symbol,
+                            'funding_rate': funding_rate * 100,  # Convert to percentage
+                            'cost_8h': funding_cost,
+                            'next_funding': 'in ' + str(8 - (datetime.now().hour % 8)) + 'h'
+                        })
+                except:
+                    pass
+        
+        return jsonify({
+            'success': True,
+            'equity_curve': equity_curve[-30:],  # Last 30 days
+            'performance': {
+                'today': {
+                    'pnl': today_pnl,
+                    'roi': (today_pnl / starting_balance * 100) if starting_balance > 0 else 0
+                },
+                'week': {
+                    'pnl': week_pnl,
+                    'roi': (week_pnl / starting_balance * 100) if starting_balance > 0 else 0
+                },
+                'month': {
+                    'pnl': month_pnl,
+                    'roi': (month_pnl / starting_balance * 100) if starting_balance > 0 else 0
+                },
+                'all_time': {
+                    'pnl': current_balance - starting_balance,
+                    'roi': ((current_balance - starting_balance) / starting_balance * 100) if starting_balance > 0 else 0
+                }
+            },
+            'portfolio_distribution': portfolio_distribution,
+            'risk_metrics': {
+                'margin_usage': margin_usage,
+                'exposure_ratio': exposure_ratio,
+                'risk_score': risk_score,
+                'available_balance': available_balance,
+                'margin_balance': margin_balance,
+                'maintenance_margin': total_maintenance_margin
+            },
+            'funding_rates': funding_rates,
+            'total_position_value': total_position_value
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/strategy-ai-analysis/<strategy_name>')
 def get_strategy_ai_analysis(strategy_name):
     """Get AI analysis of strategy performance metrics using DeepSeek"""
     try:
-        # Get trades for this strategy
+        # Get trades for this strategy (or all strategies if "overall")
         conn = sqlite3.connect(db.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        cursor.execute("""
-            SELECT * FROM trades
-            WHERE strategy = ? AND status = 'CLOSED' AND valid = 1
-            ORDER BY exit_time ASC
-        """, (strategy_name,))
+        if strategy_name == 'overall':
+            # Get last 100 trades from ALL strategies
+            cursor.execute("""
+                SELECT * FROM trades
+                WHERE status = 'CLOSED' AND valid = 1
+                ORDER BY exit_time DESC
+                LIMIT 100
+            """)
+        else:
+            cursor.execute("""
+                SELECT * FROM trades
+                WHERE strategy = ? AND status = 'CLOSED' AND valid = 1
+                ORDER BY exit_time ASC
+            """, (strategy_name,))
         
         trades = cursor.fetchall()
         conn.close()
@@ -753,20 +1093,21 @@ def get_strategy_ai_analysis(strategy_name):
                 'analysis': 'Insufficient data for analysis. No trades found for this strategy.'
             })
         
-        # Load decision code for this strategy
+        # Load decision code for specific strategies (not for overall)
         decision_code = ""
-        decision_file = f"agents/decision_{strategy_name}.py"
-        decision_path = os.path.join(os.path.dirname(__file__), decision_file)
-        
-        if os.path.exists(decision_path):
-            try:
-                with open(decision_path, 'r') as f:
-                    decision_code = f.read()
-            except Exception as e:
-                print(f"Warning: Could not read decision file: {e}")
-                decision_code = "Decision code not available"
-        else:
-            decision_code = f"Decision file not found: {decision_file}"
+        if strategy_name != 'overall':
+            decision_file = f"agents/decision_{strategy_name}.py"
+            decision_path = os.path.join(os.path.dirname(__file__), decision_file)
+            
+            if os.path.exists(decision_path):
+                try:
+                    with open(decision_path, 'r') as f:
+                        decision_code = f.read()
+                except Exception as e:
+                    print(f"Warning: Could not read decision file: {e}")
+                    decision_code = "Decision code not available"
+            else:
+                decision_code = f"Decision file not found: {decision_file}"
         
         # Calculate metrics
         import math
@@ -879,17 +1220,44 @@ Worst Trade: ${worst_trade:.2f}
 Win/Loss Streaks: {max_win_streak} / {max_loss_streak}
 """
         
-        # Prepare code section
-        code_section = f"""
+        # Prepare prompt based on strategy type
+        if strategy_name == 'overall':
+            # Overall portfolio analysis - focus on aggregated metrics from all strategies
+            prompt = f"""Analyze the OVERALL PORTFOLIO PERFORMANCE across all trading strategies based on the last 100 trades.
+
+AGGREGATED PERFORMANCE METRICS:
+{metrics_text}
+
+Note: This represents combined performance from multiple strategies (SOL, ETH, and their variants).
+
+Provide a comprehensive portfolio analysis:
+
+1. **Overall Portfolio Assessment** (2-3 sentences)
+   - Comment on the aggregated risk-adjusted returns and overall performance
+
+2. **Key Strengths** (3-4 bullet points)
+   - Focus on portfolio-level metrics (diversification, consistency, risk management)
+   - Highlight what's working well across strategies
+
+3. **Key Weaknesses or Risks** (3-4 bullet points)
+   - Identify portfolio-level concerns (correlation, drawdowns, concentration risk)
+   - Point out areas needing improvement
+
+4. **Strategic Recommendations** (3-4 bullet points)
+   - Suggest portfolio-level adjustments (position sizing, strategy allocation, risk limits)
+   - Focus on optimizing the overall portfolio performance
+
+Keep analysis concise but technical. Focus on portfolio management perspective."""
+        else:
+            # Individual strategy analysis - include code review
+            code_section = f"""
 
 STRATEGY CODE:
 ```python
 {decision_code}
 ```
 """
-
-        # Call DeepSeek API
-        prompt = f"""Analyze this trading strategy by examining both its performance metrics AND its decision-making code.
+            prompt = f"""Analyze this trading strategy by examining both its performance metrics AND its decision-making code.
 
 PERFORMANCE METRICS:
 {metrics_text}

@@ -10,19 +10,31 @@ import config
 class BinanceClient:
     """Client for fetching Binance Futures market data and executing trades"""
     
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None, demo: Optional[bool] = None):
         """
         Initialize Binance client
         
         Args:
             api_key: Optional API key (not required for public data)
             api_secret: Optional API secret (not required for public data)
+            demo: Optional demo mode flag (uses testnet if True)
         """
         # Use config values if not provided
         self.api_key = api_key if api_key else config.BINANCE_API_KEY
         self.api_secret = api_secret if api_secret else config.BINANCE_API_SECRET
+        self.demo = demo if demo is not None else config.BINANCE_DEMO
         
-        self.client = Client(self.api_key, self.api_secret)
+        # Initialize client with testnet URL if demo mode
+        if self.demo:
+            self.client = Client(
+                self.api_key, 
+                self.api_secret,
+                testnet=True
+            )
+            print("🧪 Using Binance Futures TESTNET (Demo Mode)")
+        else:
+            self.client = Client(self.api_key, self.api_secret)
+        
         self.has_credentials = bool(self.api_key and self.api_secret)
         
     def get_current_price(self, symbol: str) -> float:

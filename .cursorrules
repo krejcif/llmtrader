@@ -18,6 +18,7 @@ All pages (index.html, logs.html, strategy.html) use inline dark styles.
 - When adding new features to web UI, only modify what's needed
 - Don't refactor existing working styles
 - Keep inline `<style>` tags, don't extract to external CSS
+- **AFTER ANY WEB UI CHANGES**: Always restart dashboard with `./bot.sh restart-dashboard`
 
 ## Trading Strategies
 

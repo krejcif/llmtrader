@@ -172,20 +172,20 @@ body {
 .logs-container {
     background: #151b2b;
     border: 1px solid #1e293b;
-    padding: 20px;
+    padding: 12px;
 }
 
 .stat-card {
     display: flex;
     flex-direction: column;
-    min-height: 190px;
+    min-height: 140px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .stat-card:hover {
     background: #1e293b;
-    border-color: #334155;
+    border-color: #3b82f6;
 }
 
 .stat-card.no-click {
@@ -200,9 +200,9 @@ body {
 /* Grids */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 14px;
-    margin-bottom: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
 }
 
 .kpi-grid {
@@ -225,31 +225,31 @@ body {
 
 /* Text */
 .stat-card h3 {
-    font-size: 11px;
+    font-size: 10px;
     color: #ffffff;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    font-weight: 600;
+    letter-spacing: 0.5px;
+    font-weight: 700;
     text-align: center;
 }
 
 .stat-value,
 .kpi-value {
-    font-size: 36px;
+    font-size: 28px;
     font-weight: 700;
     color: #ffffff;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     text-align: center;
     line-height: 1;
 }
 
 .stat-label,
 .kpi-label {
-    font-size: 11px;
+    font-size: 10px;
     color: #94a3b8;
     text-align: center;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 
 .kpi-label {
@@ -339,9 +339,9 @@ tbody tr:hover td {
 /* Badges */
 .strategy-badge,
 .badge {
-    padding: 4px 10px;
-    font-size: 10px;
-    font-weight: 600;
+    padding: 3px 8px;
+    font-size: 9px;
+    font-weight: 700;
     border: 1px solid;
 }
 
@@ -400,7 +400,6 @@ tbody tr:hover td {
     justify-content: center;
     width: 16px;
     height: 16px;
-    border-radius: 50%;
     font-size: 11px;
     font-weight: bold;
     margin-right: 6px;
@@ -499,7 +498,6 @@ tbody tr:hover td {
     background: #1e293b;
     border: 1px solid #334155;
     color: #e2e8f0;
-    border-radius: 8px;
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
@@ -524,17 +522,17 @@ tbody tr:hover td {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 6px;
-    margin-top: 8px;
+    gap: 4px;
+    margin-top: 6px;
 }
 
 .stat-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 10px;
+    padding: 4px 8px;
     background: #0a0e1a;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .stat-row-label {
@@ -787,12 +785,10 @@ tbody tr:hover td {
 
 .ai-analysis-text::-webkit-scrollbar-track {
     background: #0f172a;
-    border-radius: 4px;
 }
 
 .ai-analysis-text::-webkit-scrollbar-thumb {
     background: #475569;
-    border-radius: 4px;
 }
 
 .ai-analysis-text::-webkit-scrollbar-thumb:hover {

@@ -21,6 +21,7 @@ CANDLES_LIMIT = int(os.getenv("CANDLES_LIMIT", "100"))
 # Binance API Configuration (optional for public data)
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY")
 BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET")
+BINANCE_DEMO = os.getenv("BINANCE_DEMO", "false").lower() == "true"  # Use testnet if true
 
 # Bot Configuration
 BOT_ANALYSIS_INTERVAL = int(os.getenv("BOT_ANALYSIS_INTERVAL", "900"))  # 15 min

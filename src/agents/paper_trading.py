@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.state import TradingState
 from utils.database import TradingDatabase
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import config
 
 
@@ -108,7 +108,7 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                         # Fallback to ticker only if closed candle data not available
                         current_price = strategy_market_data.get('current_price') if strategy_market_data else market_data.get('current_price')
                         print(f"⚠️  WARNING: Using ticker price as fallback (no closed candle data)")
-                    from datetime import datetime as dt, timezone
+                    from datetime import datetime as dt
                     
                     print(f"🔄 [{strategy_name.upper()}] OPPOSITE SIGNAL detected!")
                     print(f"   Closing {len(strategy_open)} {existing_direction} trade(s) on {action} signal")
@@ -178,7 +178,7 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             conn.close()
             
             if last_closed and last_closed[0]:
-                from datetime import datetime as dt, timedelta, timezone
+                from datetime import datetime as dt
                 # Handle both 'Z' and standard ISO format
                 timestamp_str = last_closed[0].replace('Z', '+00:00') if 'Z' in last_closed[0] else last_closed[0]
                 last_exit_time = dt.fromisoformat(timestamp_str)

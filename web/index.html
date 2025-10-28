@@ -30,10 +30,8 @@
         .header {
             background: #151b2b;
             border: 1px solid #1e293b;
-            border-radius: 15px;
-            padding: 25px 35px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 18px 24px;
+            margin-bottom: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -79,11 +77,9 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 18px;
-            border-radius: 12px;
+            padding: 8px 16px;
             font-weight: 600;
-            font-size: 13px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 12px;
         }
         
         .bot-running {
@@ -97,9 +93,8 @@
         }
         
         .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+            width: 6px;
+            height: 6px;
             background: white;
             animation: pulse 2s ease-in-out infinite;
         }
@@ -110,47 +105,46 @@
         }
         
         .nav-link {
-            padding: 10px 20px;
+            padding: 8px 16px;
             background: #1e293b;
-            border: 2px solid #667eea;
-            color: #667eea;
-            border-radius: 10px;
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
             text-decoration: none;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            font-size: 12px;
         }
         
         .nav-link:hover {
-            background: #667eea;
+            background: #3b82f6;
             color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            border-color: #60a5fa;
         }
         
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
         }
         
         .stat-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            padding: 20px;
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            min-height: 200px;
+            min-height: 140px;
             cursor: pointer;
             transition: all 0.2s;
         }
         
         .stat-card:hover {
-            background: #334155;
-            border-color: #475569;
+            background: #1e293b;
+            border-color: #3b82f6;
         }
         
         .stat-card.no-click {
@@ -158,34 +152,34 @@
         }
         
         .stat-card.no-click:hover {
-            background: #1e293b;
-            border-color: #334155;
+            background: #151b2b;
+            border-color: #1e293b;
         }
         
         .stat-card h3 {
-            font-size: 11px;
-            color: #cbd5e1;
-            margin-bottom: 12px;
+            font-size: 10px;
+            color: #ffffff;
+            margin-bottom: 6px;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-weight: 600;
+            letter-spacing: 0.5px;
+            font-weight: 700;
             text-align: center;
         }
         
         .stat-value {
-            font-size: 38px;
+            font-size: 28px;
             font-weight: 700;
             color: #ffffff;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             text-align: center;
             line-height: 1;
         }
         
         .stat-label {
-            font-size: 11px;
+            font-size: 10px;
             color: #94a3b8;
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         
         .stat-details {
@@ -193,18 +187,17 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            gap: 6px;
-            margin-top: 10px;
+            gap: 4px;
+            margin-top: 6px;
         }
         
         .stat-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 6px 10px;
-            background: #f9fafb;
-            border-radius: 6px;
-            font-size: 13px;
+            padding: 4px 8px;
+            background: #0a0e1a;
+            font-size: 11px;
         }
         
         .stat-row-label {
@@ -214,15 +207,14 @@
         
         .stat-row-value {
             font-weight: 600;
-            color: #e2e8f0;
+            color: #ffffff;
         }
         
         .strategy-badge {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 600;
+            padding: 3px 8px;
+            font-size: 9px;
+            font-weight: 700;
             margin-top: auto;
             text-align: center;
             width: fit-content;
@@ -257,9 +249,7 @@
         .trades-section {
             background: #151b2b;
             border: 1px solid #1e293b;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 20px;
         }
         
         .filters {
@@ -270,25 +260,24 @@
         }
         
         .filter-btn {
-            padding: 10px 20px;
-            border: 2px solid #334155;
+            padding: 7px 14px;
+            border: 1px solid #334155;
             background: #1e293b;
             color: #e2e8f0;
-            border-radius: 10px;
             cursor: pointer;
             font-weight: 600;
-            transition: all 0.3s;
+            font-size: 12px;
+            transition: all 0.2s;
         }
         
         .filter-btn:hover {
-            border-color: #667eea;
-            color: #667eea;
+            border-color: #475569;
         }
         
         .filter-btn.active {
-            background: #667eea;
+            background: #3b82f6;
             color: white;
-            border-color: #667eea;
+            border-color: #60a5fa;
         }
         
         table {
@@ -339,87 +328,72 @@
         }
         
         .status-open {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
+            background: #78350f;
+            color: #fbbf24;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid #f59e0b;
         }
         
         .status-closed {
-            background: #e5e7eb;
-            color: #374151;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
+            background: #1e293b;
+            color: #94a3b8;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid #334155;
         }
         
         .refresh-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #3b82f6;
             color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
+            border: 1px solid #60a5fa;
+            padding: 8px 16px;
             font-weight: 600;
+            font-size: 12px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+            gap: 6px;
         }
         
         .refresh-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .refresh-btn:active {
-            transform: translateY(0);
+            background: #2563eb;
+            border-color: #3b82f6;
         }
         
         .close-btn {
             background: #10b981;
             color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
+            border: 1px solid #059669;
+            padding: 5px 10px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
         }
         
         .close-btn:hover {
             background: #059669;
-            transform: scale(1.05);
-        }
-        
-        .close-btn:active {
-            transform: scale(0.95);
+            border-color: #047857;
         }
         
         .delete-btn {
             background: #ef4444;
             color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
+            border: 1px solid #dc2626;
+            padding: 5px 10px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
         }
         
         .delete-btn:hover {
             background: #dc2626;
-            transform: scale(1.05);
-        }
-        
-        .delete-btn:active {
-            transform: scale(0.95);
+            border-color: #b91c1c;
         }
     </style>
 </head>
@@ -439,6 +413,10 @@
                     <span class="status-dot"></span>
                     <span>Loading...</span>
                 </span>
+                <a href="/live" class="nav-link">
+                    <span>📡</span>
+                    <span>Live</span>
+                </a>
                 <a href="/logs" class="nav-link">
                     <span>📋</span>
                     <span>Strategy Logs</span>
@@ -453,7 +431,7 @@
         <!-- Statistics Grid -->
         <div class="stats-grid">
             <!-- Overall Stats -->
-            <div class="stat-card no-click">
+            <div class="stat-card" onclick="window.location.href='/strategy?strategy=overall'">
                 <h3>📊 Overall Performance</h3>
                 <div class="stat-value" id="overallWinRate">--</div>
                 <div class="stat-label">Win Rate</div>
@@ -492,7 +470,6 @@
                         <span class="stat-row-value" id="solPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-sol">AI Free (EMA 20/50)</span>
             </div>
             
             <!-- Sol Fast (EMA 7/25) -->
@@ -514,7 +491,6 @@
                         <span class="stat-row-value" id="sol_fastPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-sol-e725">AI Fast (EMA 7/25)</span>
             </div>
             
             <!-- ETH -->
@@ -536,7 +512,6 @@
                         <span class="stat-row-value" id="ethPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-eth">AI ETH (EMA 20/50)</span>
             </div>
             
             <!-- ETH Fast -->
@@ -558,7 +533,6 @@
                         <span class="stat-row-value" id="eth_fastPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-eth-fast">AI ETH Fast (EMA 7/25)</span>
             </div>
             
             <!-- DOGE -->
@@ -580,7 +554,6 @@
                         <span class="stat-row-value" id="dogePF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-doge">AI DOGE (EMA 20/50)</span>
             </div>
             
             <!-- DOGE Fast -->
@@ -602,7 +575,6 @@
                         <span class="stat-row-value" id="doge_fastPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-doge-fast">AI DOGE Fast (EMA 7/25)</span>
             </div>
             
             <!-- XRP -->
@@ -624,7 +596,6 @@
                         <span class="stat-row-value" id="xrpPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-xrp">AI XRP (EMA 20/50)</span>
             </div>
             
             <!-- XRP Fast -->
@@ -646,7 +617,6 @@
                         <span class="stat-row-value" id="xrp_fastPF">--</span>
                     </div>
                 </div>
-                <span class="strategy-badge badge-xrp-fast">AI XRP Fast (EMA 7/25)</span>
             </div>
         </div>
         
