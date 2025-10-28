@@ -65,6 +65,10 @@ class MonitoringAgent:
         orphaned_result = self.check_and_cancel_orphaned_orders()
         results['tasks']['orphaned_orders'] = orphaned_result
         
+        # Task 2: Check and fix SL/TP order amounts
+        amount_result = self.check_and_fix_order_amounts()
+        results['tasks']['order_amounts'] = amount_result
+        
         self.logger.info(f"🔍 [MONITORING] Cycle #{self.run_count} complete")
         
         return results
@@ -157,6 +161,136 @@ class MonitoringAgent:
             
         except Exception as e:
             self.logger.error(f"🔍 [MONITORING] ❌ Error checking orphaned orders: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
+    
+    def check_and_fix_order_amounts(self) -> Dict:
+        """
+        Check that SL/TP order amounts match open position size.
+        
+        For each open position:
+        - Total SL amount should equal position size
+        - Total TP amount should equal position size
+        - Remove excess orders if amounts don't match
+        
+        Returns:
+            Dict with task results
+        """
+        try:
+            self.logger.info("🔍 [MONITORING] Checking order amounts vs positions...")
+            
+            # Get all open positions
+            open_positions = self.client.get_open_positions()
+            
+            if not open_positions:
+                self.logger.info("🔍 [MONITORING] ✅ No open positions to check")
+                return {
+                    'status': 'success',
+                    'positions_checked': 0,
+                    'issues_found': 0,
+                    'orders_cancelled': 0
+                }
+            
+            # Get all open orders
+            open_orders = self.client.get_open_orders()
+            
+            issues_found = 0
+            orders_cancelled = 0
+            results_by_symbol = {}
+            
+            for position in open_positions:
+                symbol = position['symbol']
+                position_amt = abs(float(position['position_amt']))
+                
+                if position_amt == 0:
+                    continue
+                
+                self.logger.info(f"🔍 [MONITORING] Checking {symbol}: Position size = {position_amt}")
+                
+                # Get orders for this symbol
+                symbol_orders = [o for o in open_orders if o['symbol'] == symbol]
+                
+                # Separate SL and TP orders
+                sl_orders = [o for o in symbol_orders if o.get('type') in ['STOP', 'STOP_MARKET', 'STOP_LOSS', 'STOP_LOSS_MARKET']]
+                tp_orders = [o for o in symbol_orders if o.get('type') in ['TAKE_PROFIT', 'TAKE_PROFIT_MARKET']]
+                
+                # Calculate total amounts
+                sl_total = sum(abs(float(o.get('quantity', 0))) for o in sl_orders)
+                tp_total = sum(abs(float(o.get('quantity', 0))) for o in tp_orders)
+                
+                self.logger.info(f"🔍 [MONITORING]   SL orders: {len(sl_orders)} (total: {sl_total})")
+                self.logger.info(f"🔍 [MONITORING]   TP orders: {len(tp_orders)} (total: {tp_total})")
+                
+                symbol_result = {
+                    'position_amt': position_amt,
+                    'sl_total': sl_total,
+                    'tp_total': tp_total,
+                    'sl_orders_count': len(sl_orders),
+                    'tp_orders_count': len(tp_orders),
+                    'issues': [],
+                    'cancelled_orders': []
+                }
+                
+                # Check if SL/TP amounts are correct (within 5% tolerance for rounding)
+                tolerance = position_amt * 0.05  # 5% tolerance
+                sl_mismatch = abs(sl_total - position_amt) > tolerance
+                tp_mismatch = abs(tp_total - position_amt) > tolerance
+                
+                # If there's any mismatch, cancel ALL SL/TP orders for this symbol
+                # The bot will recreate correct orders on next trade signal
+                if sl_mismatch or tp_mismatch:
+                    if sl_mismatch:
+                        issue = f"SL amount ({sl_total:.2f}) != position ({position_amt:.2f})"
+                        self.logger.info(f"🔍 [MONITORING] ⚠️  {symbol}: {issue}")
+                        symbol_result['issues'].append(issue)
+                        issues_found += 1
+                    
+                    if tp_mismatch:
+                        issue = f"TP amount ({tp_total:.2f}) != position ({position_amt:.2f})"
+                        self.logger.info(f"🔍 [MONITORING] ⚠️  {symbol}: {issue}")
+                        symbol_result['issues'].append(issue)
+                        issues_found += 1
+                    
+                    # Cancel ALL SL/TP orders (something is wrong with order setup)
+                    self.logger.info(f"🔍 [MONITORING] ❌ Cancelling ALL {len(sl_orders)} SL + {len(tp_orders)} TP orders for {symbol}")
+                    
+                    for order in sl_orders + tp_orders:
+                        try:
+                            self.client.cancel_order(symbol, order['order_id'])
+                            orders_cancelled += 1
+                            symbol_result['cancelled_orders'].append({
+                                'order_id': order['order_id'],
+                                'type': order.get('type'),
+                                'qty': order.get('quantity')
+                            })
+                            self.logger.info(f"🔍 [MONITORING] ✅ Cancelled {order.get('type')} order {order['order_id']}")
+                        except Exception as e:
+                            self.logger.error(f"🔍 [MONITORING] ❌ Error cancelling order {order['order_id']}: {e}")
+                
+                if not symbol_result['issues']:
+                    self.logger.info(f"🔍 [MONITORING] ✅ {symbol}: Order amounts OK")
+                
+                results_by_symbol[symbol] = symbol_result
+            
+            if issues_found == 0:
+                self.logger.info("🔍 [MONITORING] ✅ All order amounts match positions")
+            else:
+                self.logger.info(f"🔍 [MONITORING] ⚠️  Found {issues_found} amount mismatches, cancelled {orders_cancelled} excess orders")
+            
+            return {
+                'status': 'success',
+                'positions_checked': len(open_positions),
+                'issues_found': issues_found,
+                'orders_cancelled': orders_cancelled,
+                'details': results_by_symbol
+            }
+            
+        except Exception as e:
+            self.logger.error(f"🔍 [MONITORING] ❌ Error checking order amounts: {e}")
             import traceback
             traceback.print_exc()
             return {

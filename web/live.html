@@ -387,6 +387,38 @@
             font-size: 12px;
         }
         
+        /* Active Positions Table - Right align numbers */
+        #positionsTable th:nth-child(n+3),
+        #positionsTable td:nth-child(n+3) {
+            text-align: right;
+        }
+        
+        #positionsTable th:first-child,
+        #positionsTable td:first-child {
+            text-align: left;
+        }
+        
+        #positionsTable th:nth-child(2),
+        #positionsTable td:nth-child(2) {
+            text-align: center;
+        }
+        
+        /* Closed Positions Table - Right align numbers */
+        #closedPositionsTable th:nth-child(n+5),
+        #closedPositionsTable td:nth-child(n+5) {
+            text-align: right;
+        }
+        
+        #closedPositionsTable th:first-child,
+        #closedPositionsTable td:first-child {
+            text-align: left;
+        }
+        
+        #closedPositionsTable th:nth-child(2),
+        #closedPositionsTable td:nth-child(2) {
+            text-align: center;
+        }
+        
         /* Alert Box */
         .alert {
             padding: 12px 16px;
@@ -592,16 +624,19 @@
                             <th>Symbol</th>
                             <th>Side</th>
                             <th>Size</th>
+                            <th>Position Value</th>
                             <th>Entry Price</th>
                             <th>Mark Price</th>
                             <th>Unrealized P&L</th>
+                            <th>Fees</th>
+                            <th>NET P&L</th>
                             <th>Leverage</th>
                             <th>Margin Type</th>
                             <th>Liquidation Price</th>
                         </tr>
                     </thead>
                     <tbody id="positionsBody">
-                        <tr><td colspan="9" class="loading">Loading...</td></tr>
+                        <tr><td colspan="12" class="loading">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -660,16 +695,19 @@
                     <thead>
                         <tr>
                             <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Entry</th>
+                            <th>Exit</th>
+                            <th>Price</th>
+                            <th>Qty</th>
                             <th>Realized P&L</th>
                             <th>Commission</th>
                             <th>Net P&L</th>
-                            <th>Trades</th>
                             <th>Duration</th>
-                            <th>Last Trade</th>
                         </tr>
                     </thead>
                     <tbody id="closedPositionsBody">
-                        <tr><td colspan="7" class="loading">Loading...</td></tr>
+                        <tr><td colspan="10" class="loading">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -991,17 +1029,19 @@
             const tbody = document.getElementById('closedPositionsBody');
             const countSpan = document.getElementById('positionsCount');
             
-            countSpan.textContent = statistics.total_positions || positions.length;
+            countSpan.textContent = positions.length;
             
             if (positions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No closed positions in the last 30 days</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No closed positions</td></tr>';
                 return;
             }
             
             tbody.innerHTML = positions.map(position => {
-                const lastTradeTime = new Date(position.last_trade).toLocaleString();
+                const entryTime = new Date(position.entry_time).toLocaleString();
+                const exitTime = new Date(position.exit_time).toLocaleString();
                 const realizedPnlClass = position.realized_pnl > 0 ? 'profit' : position.realized_pnl < 0 ? 'loss' : '';
                 const netPnlClass = position.net_pnl > 0 ? 'profit' : position.net_pnl < 0 ? 'loss' : '';
+                const sideClass = position.side === 'LONG' ? 'profit' : 'loss';
                 
                 // Format duration
                 let durationStr = '';
@@ -1013,15 +1053,26 @@
                     durationStr = (position.duration_hours / 24).toFixed(1) + 'd';
                 }
                 
+                // Price change
+                const priceChange = ((position.exit_price - position.entry_price) / position.entry_price * 100).toFixed(2);
+                const priceChangeStr = (priceChange > 0 ? '+' : '') + priceChange + '%';
+                const priceChangeClass = priceChange > 0 ? 'profit' : 'loss';
+                
                 return `
                     <tr>
                         <td><strong>${position.symbol}</strong></td>
+                        <td class="${sideClass}"><strong>${position.side}</strong></td>
+                        <td style="font-size: 11px;">${entryTime}</td>
+                        <td style="font-size: 11px;">${exitTime}</td>
+                        <td>
+                            <div>$${position.entry_price} → $${position.exit_price}</div>
+                            <div class="${priceChangeClass}" style="font-size: 10px;">${priceChangeStr}</div>
+                        </td>
+                        <td>${position.quantity}</td>
                         <td class="${realizedPnlClass}">$${position.realized_pnl.toFixed(2)}</td>
                         <td class="loss">-$${position.commission.toFixed(2)}</td>
                         <td class="${netPnlClass}"><strong>$${position.net_pnl.toFixed(2)}</strong></td>
-                        <td>${position.trade_count} trades</td>
                         <td>${durationStr}</td>
-                        <td>${lastTradeTime}</td>
                     </tr>
                 `;
             }).join('');
@@ -1107,22 +1158,45 @@
                 const positionsBody = document.getElementById('positionsBody');
                 
                 if (positions.length === 0) {
-                    positionsBody.innerHTML = '<tr><td colspan="9" class="empty-state">No active positions</td></tr>';
+                    positionsBody.innerHTML = '<tr><td colspan="12" class="empty-state">No active positions</td></tr>';
                 } else {
                     positionsBody.innerHTML = positions.map(pos => {
                         const pnlClass = pos.unrealized_pnl >= 0 ? 'profit' : 'loss';
+                        const netPnlClass = pos.net_pnl >= 0 ? 'profit' : 'loss';
                         const sideClass = pos.position_amt > 0 ? 'badge-long' : 'badge-short';
                         const sideName = pos.position_amt > 0 ? 'LONG' : 'SHORT';
+                        
+                        // Calculate margin (position value / leverage)
+                        const margin = pos.position_value / pos.leverage;
                         
                         return `
                             <tr>
                                 <td><strong>${pos.symbol}</strong></td>
                                 <td><span class="badge ${sideClass}">${sideName}</span></td>
                                 <td>${Math.abs(pos.position_amt).toFixed(4)}</td>
+                                <td>
+                                    <strong>$${pos.position_value.toFixed(2)}</strong>
+                                    <div style="font-size: 10px; opacity: 0.7;">Margin: $${margin.toFixed(2)}</div>
+                                </td>
                                 <td>$${pos.entry_price.toFixed(4)}</td>
                                 <td>$${pos.mark_price.toFixed(4)}</td>
-                                <td class="${pnlClass}">${pos.unrealized_pnl >= 0 ? '+' : ''}$${pos.unrealized_pnl.toFixed(2)}</td>
-                                <td>${pos.leverage}x</td>
+                                <td class="${pnlClass}">
+                                    ${pos.unrealized_pnl >= 0 ? '+' : ''}$${pos.unrealized_pnl.toFixed(2)}
+                                    <div style="font-size: 10px;">${pos.unrealized_pnl_pct >= 0 ? '+' : ''}${pos.unrealized_pnl_pct.toFixed(2)}%</div>
+                                </td>
+                                <td class="loss" style="font-size: 11px;">
+                                    -$${pos.total_fees.toFixed(2)}
+                                    <div style="font-size: 9px; opacity: 0.7;">
+                                        Entry: $${pos.entry_fee.toFixed(2)}<br>
+                                        Exit: $${pos.exit_fee.toFixed(2)}<br>
+                                        Fund: $${Math.abs(pos.funding_fees).toFixed(2)}
+                                    </div>
+                                </td>
+                                <td class="${netPnlClass}">
+                                    <strong>${pos.net_pnl >= 0 ? '+' : ''}$${pos.net_pnl.toFixed(2)}</strong>
+                                    <div style="font-size: 10px;">${pos.net_pnl_pct >= 0 ? '+' : ''}${pos.net_pnl_pct.toFixed(2)}%</div>
+                                </td>
+                                <td><strong>${pos.leverage}x</strong></td>
                                 <td>${pos.margin_type}</td>
                                 <td>${pos.liquidation_price > 0 ? '$' + pos.liquidation_price.toFixed(4) : 'N/A'}</td>
                             </tr>

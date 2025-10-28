@@ -46,17 +46,41 @@ def live():
 
 @app.route('/api/stats')
 def get_stats():
-    """Get overall and per-strategy statistics"""
+    """Get overall and per-strategy statistics (combines paper + live trading)"""
     symbol = request.args.get('symbol')
     
     # Create strategy symbol mapping from config
     strategy_symbols = {strategy.name: strategy.symbol for strategy in STRATEGIES}
     
+    # Get paper trading stats from database
     stats_all = db.get_trade_stats(symbol)
     stats_sol = db.get_trade_stats(symbol, 'sol')
     stats_sol_fast = db.get_trade_stats(symbol, 'sol_fast')
     stats_eth = db.get_trade_stats(symbol, 'eth')
     stats_eth_fast = db.get_trade_stats(symbol, 'eth_fast')
+    
+    # Get live trading stats from Binance
+    live_stats = None
+    try:
+        from utils.binance_client import BinanceClient
+        client = BinanceClient()
+        live_stats = client.get_live_trading_stats(symbol=symbol)
+    except Exception as e:
+        print(f"Error fetching live stats: {e}")
+        live_stats = {
+            'total_trades': 0,
+            'wins': 0,
+            'losses': 0,
+            'win_rate': 0,
+            'total_pnl': 0,
+            'today_pnl': 0,
+            'today_roi': 0,
+            'week_pnl': 0,
+            'week_roi': 0,
+            'month_pnl': 0,
+            'month_roi': 0,
+            'roi': 0
+        }
     
     return jsonify({
         'overall': stats_all,
@@ -66,7 +90,8 @@ def get_stats():
             'eth': stats_eth,
             'eth_fast': stats_eth_fast
         },
-        'strategy_symbols': strategy_symbols  # Add symbol mapping
+        'strategy_symbols': strategy_symbols,
+        'live_stats': live_stats  # Add live trading stats from Binance
     })
 
 
@@ -787,7 +812,30 @@ def get_binance_account():
                     'available_balance': float(asset['availableBalance'])
                 })
         
+        # Get funding fees for open positions
+        from datetime import datetime, timedelta
+        funding_fees_by_symbol = {}
+        try:
+            # Get funding fee history for last 30 days
+            month_ago = int((datetime.now() - timedelta(days=30)).timestamp() * 1000)
+            income_history = client.client.futures_income_history(
+                incomeType='FUNDING_FEE',
+                startTime=month_ago,
+                limit=1000
+            )
+            
+            # Group by symbol
+            for item in income_history:
+                symbol = item.get('symbol', '')
+                if symbol:
+                    if symbol not in funding_fees_by_symbol:
+                        funding_fees_by_symbol[symbol] = 0
+                    funding_fees_by_symbol[symbol] += float(item['income'])
+        except:
+            pass
+        
         # Process positions (only open positions)
+        fee_rate = 0.0004  # 0.04% Binance Futures taker fee
         active_positions = []
         for pos in positions:
             position_amt = float(pos['positionAmt'])
@@ -795,14 +843,44 @@ def get_binance_account():
                 unrealized_pnl = float(pos['unRealizedProfit'])
                 entry_price = float(pos['entryPrice'])
                 mark_price = float(pos['markPrice'])
+                symbol = pos['symbol']
+                
+                # Calculate P&L percentage
+                if position_amt > 0:  # LONG
+                    pnl_pct = ((mark_price - entry_price) / entry_price) * 100
+                else:  # SHORT
+                    pnl_pct = ((entry_price - mark_price) / entry_price) * 100
+                
+                # Calculate fees
+                position_value_entry = abs(position_amt) * entry_price
+                position_value_exit = abs(position_amt) * mark_price
+                
+                entry_fee = position_value_entry * fee_rate
+                exit_fee = position_value_exit * fee_rate
+                
+                # Get funding fees for this symbol (since position was opened)
+                funding_fees = funding_fees_by_symbol.get(symbol, 0)
+                
+                # Calculate NET P&L = Unrealized PnL - Entry Fee - Exit Fee - Funding Fees
+                total_fees = entry_fee + exit_fee + abs(funding_fees)
+                net_pnl = unrealized_pnl - total_fees
+                net_pnl_pct = (net_pnl / position_value_entry) * 100
                 
                 active_positions.append({
-                    'symbol': pos['symbol'],
+                    'symbol': symbol,
                     'position_side': pos.get('positionSide', 'BOTH'),
                     'position_amt': position_amt,
+                    'position_value': position_value_exit,  # Current position value in USD
                     'entry_price': entry_price,
                     'mark_price': mark_price,
                     'unrealized_pnl': unrealized_pnl,
+                    'unrealized_pnl_pct': pnl_pct,
+                    'entry_fee': entry_fee,
+                    'exit_fee': exit_fee,
+                    'funding_fees': funding_fees,
+                    'total_fees': total_fees,
+                    'net_pnl': net_pnl,
+                    'net_pnl_pct': net_pnl_pct,
                     'leverage': int(pos.get('leverage', 1)),
                     'margin_type': pos.get('marginType', 'cross'),
                     'liquidation_price': float(pos.get('liquidationPrice', 0)) if pos.get('liquidationPrice') else 0
@@ -991,14 +1069,8 @@ def get_binance_analytics():
             'commission': 0
         })
         
-        # Calculate performance metrics from Binance income history
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        week_start = now - timedelta(days=7)
-        month_start = now - timedelta(days=30)
-        
-        today_pnl = sum(item['realized_pnl'] for item in equity_curve if item['date'] == now.strftime('%Y-%m-%d'))
-        week_pnl = sum(item['realized_pnl'] for date_str, item in zip(sorted_dates, equity_curve) if datetime.strptime(date_str, '%Y-%m-%d') >= week_start)
-        month_pnl = realized_pnl_total
+        # Get live trading statistics using our new function
+        live_stats = client.get_live_trading_stats(days=365)
         
         # Get closed positions from Binance account trades (more reliable than income history)
         closed_positions = {}
@@ -1057,42 +1129,116 @@ def get_binance_analytics():
             
             print(f"✅ Total trades fetched: {len(all_trades)}")
             
-            # Aggregate trades by symbol
+            # Parse individual positions (not aggregated by symbol)
+            # Group trades by symbol and sort by time
+            trades_by_symbol = {}
             for trade in all_trades:
                 symbol = trade['symbol']
-                realized_pnl = float(trade.get('realizedPnl', 0))
-                commission = float(trade.get('commission', 0))
-                timestamp = trade['time']
-                
-                if symbol not in closed_positions:
-                    closed_positions[symbol] = {
-                        'symbol': symbol,
-                        'realized_pnl': 0,
-                        'total_commission': 0,
-                        'trade_count': 0,
-                        'last_trade_time': timestamp,
-                        'first_trade_time': timestamp
-                    }
-                
-                closed_positions[symbol]['realized_pnl'] += realized_pnl
-                closed_positions[symbol]['total_commission'] += abs(commission)
-                closed_positions[symbol]['trade_count'] += 1
-                closed_positions[symbol]['last_trade_time'] = max(
-                    closed_positions[symbol]['last_trade_time'], 
-                    timestamp
-                )
-                closed_positions[symbol]['first_trade_time'] = min(
-                    closed_positions[symbol]['first_trade_time'], 
-                    timestamp
-                )
+                if symbol not in trades_by_symbol:
+                    trades_by_symbol[symbol] = []
+                trades_by_symbol[symbol].append(trade)
             
-            # Filter out symbols with no realized P&L (only entry/exit pairs count)
-            closed_positions = {
-                sym: data for sym, data in closed_positions.items()
-                if data['realized_pnl'] != 0 or data['trade_count'] >= 2
-            }
+            # Sort trades by time for each symbol
+            for symbol in trades_by_symbol:
+                trades_by_symbol[symbol].sort(key=lambda x: x['time'])
             
-            print(f"📊 Aggregated {len(closed_positions)} closed positions with P&L")
+            # Track individual positions
+            individual_positions = []
+            
+            for symbol, symbol_trades in trades_by_symbol.items():
+                current_position = None
+                running_qty = 0
+                
+                for trade in symbol_trades:
+                    qty = float(trade['qty'])
+                    side = trade['side']
+                    realized_pnl = float(trade.get('realizedPnl', 0))
+                    commission = float(trade.get('commission', 0))
+                    price = float(trade['price'])
+                    timestamp = trade['time']
+                    
+                    # Determine trade direction
+                    if side == 'BUY':
+                        trade_qty = qty
+                    else:  # SELL
+                        trade_qty = -qty
+                    
+                    # Check if this opens a new position
+                    if current_position is None and trade_qty != 0:
+                        # Start new position
+                        current_position = {
+                            'symbol': symbol,
+                            'side': 'LONG' if trade_qty > 0 else 'SHORT',
+                            'entry_time': timestamp,
+                            'entry_price': price,
+                            'entry_qty': abs(trade_qty),
+                            'exit_time': None,
+                            'exit_price': None,
+                            'realized_pnl': 0,
+                            'total_commission': abs(commission),
+                            'trades': 1
+                        }
+                        running_qty = trade_qty
+                    
+                    elif current_position is not None:
+                        # Add to current position
+                        current_position['total_commission'] += abs(commission)
+                        current_position['trades'] += 1
+                        
+                        # Check if this trade closes or reduces the position
+                        new_running_qty = running_qty + trade_qty
+                        
+                        # Position is being closed (partially or fully)
+                        if realized_pnl != 0:
+                            current_position['realized_pnl'] += realized_pnl
+                        
+                        # Check if position is fully closed
+                        if abs(new_running_qty) < 0.0001:  # Position closed
+                            current_position['exit_time'] = timestamp
+                            current_position['exit_price'] = price
+                            current_position['duration_hours'] = (timestamp - current_position['entry_time']) / (1000 * 3600)
+                            current_position['net_pnl'] = current_position['realized_pnl'] - current_position['total_commission']
+                            
+                            # Only save positions with realized P&L
+                            if current_position['realized_pnl'] != 0:
+                                individual_positions.append(current_position)
+                            
+                            # Reset for next position
+                            current_position = None
+                            running_qty = 0
+                        
+                        # Position reversed direction
+                        elif (running_qty > 0 and new_running_qty < 0) or (running_qty < 0 and new_running_qty > 0):
+                            # Close current position
+                            current_position['exit_time'] = timestamp
+                            current_position['exit_price'] = price
+                            current_position['duration_hours'] = (timestamp - current_position['entry_time']) / (1000 * 3600)
+                            current_position['net_pnl'] = current_position['realized_pnl'] - current_position['total_commission']
+                            
+                            if current_position['realized_pnl'] != 0:
+                                individual_positions.append(current_position)
+                            
+                            # Start new position in opposite direction
+                            current_position = {
+                                'symbol': symbol,
+                                'side': 'LONG' if new_running_qty > 0 else 'SHORT',
+                                'entry_time': timestamp,
+                                'entry_price': price,
+                                'entry_qty': abs(new_running_qty),
+                                'exit_time': None,
+                                'exit_price': None,
+                                'realized_pnl': 0,
+                                'total_commission': 0,
+                                'trades': 0
+                            }
+                            running_qty = new_running_qty
+                        
+                        else:
+                            # Position continues
+                            running_qty = new_running_qty
+            
+            closed_positions = individual_positions
+            print(f"📊 Identified {len(closed_positions)} individual closed positions")
             
         except Exception as e:
             print(f"❌ Error aggregating closed positions: {e}")
@@ -1176,21 +1322,22 @@ def get_binance_analytics():
                 except:
                     pass
         
-        # Format closed positions for frontend (sorted by last trade time)
+        # Format individual positions for frontend (sorted by exit time, newest first)
         formatted_positions = []
-        for symbol, pos_data in sorted(
-            closed_positions.items(), 
-            key=lambda x: x[1]['last_trade_time'], 
-            reverse=True
-        ):
+        for pos in sorted(closed_positions, key=lambda x: x['exit_time'], reverse=True):
             formatted_positions.append({
-                'symbol': symbol,
-                'realized_pnl': pos_data['realized_pnl'],
-                'commission': pos_data['total_commission'],
-                'net_pnl': pos_data['realized_pnl'] - pos_data['total_commission'],
-                'trade_count': pos_data['trade_count'],
-                'last_trade': datetime.fromtimestamp(pos_data['last_trade_time'] / 1000).isoformat(),
-                'duration_hours': (pos_data['last_trade_time'] - pos_data['first_trade_time']) / (1000 * 3600)
+                'symbol': pos['symbol'],
+                'side': pos['side'],
+                'entry_time': datetime.fromtimestamp(pos['entry_time'] / 1000).isoformat(),
+                'exit_time': datetime.fromtimestamp(pos['exit_time'] / 1000).isoformat(),
+                'entry_price': round(pos['entry_price'], 6),
+                'exit_price': round(pos['exit_price'], 6),
+                'quantity': pos['entry_qty'],
+                'realized_pnl': round(pos['realized_pnl'], 2),
+                'commission': round(pos['total_commission'], 2),
+                'net_pnl': round(pos['net_pnl'], 2),
+                'duration_hours': round(pos['duration_hours'], 2),
+                'trades': pos['trades']
             })
         
         # Calculate total stats
@@ -1202,20 +1349,20 @@ def get_binance_analytics():
             'equity_curve': equity_curve[-30:],  # Last 30 days
             'performance': {
                 'today': {
-                    'pnl': today_pnl,
-                    'roi': (today_pnl / starting_balance * 100) if starting_balance > 0 else 0
+                    'pnl': live_stats['today_pnl'],
+                    'roi': live_stats['today_roi']
                 },
                 'week': {
-                    'pnl': week_pnl,
-                    'roi': (week_pnl / starting_balance * 100) if starting_balance > 0 else 0
+                    'pnl': live_stats['week_pnl'],
+                    'roi': live_stats['week_roi']
                 },
                 'month': {
-                    'pnl': month_pnl,
-                    'roi': (month_pnl / starting_balance * 100) if starting_balance > 0 else 0
+                    'pnl': live_stats['month_pnl'],
+                    'roi': live_stats['month_roi']
                 },
                 'all_time': {
-                    'pnl': current_balance - starting_balance,
-                    'roi': ((current_balance - starting_balance) / starting_balance * 100) if starting_balance > 0 else 0
+                    'pnl': live_stats['total_pnl'],
+                    'roi': live_stats['roi']
                 }
             },
             'portfolio_distribution': portfolio_distribution,

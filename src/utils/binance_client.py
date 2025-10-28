@@ -528,4 +528,106 @@ class BinanceClient:
             } for order in orders]
         except BinanceAPIException as e:
             raise Exception(f"Error fetching open orders: {e}")
+    
+    def get_live_trading_stats(self, symbol: Optional[str] = None, days: int = 365) -> Dict:
+        """
+        Get live trading statistics from Binance account trades
+        (Uses account_trades instead of income_history for Testnet compatibility)
+        
+        Args:
+            symbol: Optional symbol filter
+            days: Number of days to look back (default 365 for all time)
+            
+        Returns:
+            Dict with trading statistics
+        """
+        self.check_credentials()
+        try:
+            from datetime import datetime, timedelta
+            from strategy_config import STRATEGIES
+            
+            # Get current account balance
+            account = self.client.futures_account()
+            total_balance = float(account['totalWalletBalance'])
+            available_balance = float(account['availableBalance'])
+            unrealized_pnl = float(account['totalUnrealizedProfit'])
+            
+            # Get all trades from account_trades (more reliable than income_history on Testnet)
+            all_trades = []
+            symbols_to_check = []
+            
+            if symbol:
+                symbols_to_check = [symbol]
+            else:
+                # Get symbols from strategies
+                symbols_to_check = list(set(s.symbol.upper() for s in STRATEGIES if s.enabled and s.symbol))
+            
+            # Fetch trades for each symbol
+            for sym in symbols_to_check:
+                try:
+                    trades = self.client.futures_account_trades(symbol=sym, limit=1000)
+                    all_trades.extend(trades)
+                except:
+                    pass
+            
+            # Calculate statistics from trades
+            total_realized_pnl = sum(float(t.get('realizedPnl', 0)) for t in all_trades)
+            
+            # Group trades by position (pair entry/exit for counting)
+            closed_positions = []
+            for trade in all_trades:
+                realized = float(trade.get('realizedPnl', 0))
+                if realized != 0:  # Only closing trades have realized PnL
+                    closed_positions.append({
+                        'pnl': realized,
+                        'time': trade['time']
+                    })
+            
+            trade_count = len(closed_positions)
+            wins = sum(1 for p in closed_positions if p['pnl'] > 0)
+            losses = sum(1 for p in closed_positions if p['pnl'] < 0)
+            win_rate = (wins / trade_count * 100) if trade_count > 0 else 0
+            avg_pnl = (total_realized_pnl / trade_count) if trade_count > 0 else 0
+            
+            # Calculate time-based stats
+            now = datetime.now()
+            today_start = datetime(now.year, now.month, now.day).timestamp() * 1000
+            week_start = (now - timedelta(days=7)).timestamp() * 1000
+            month_start = (now - timedelta(days=30)).timestamp() * 1000
+            
+            today_pnl = sum(p['pnl'] for p in closed_positions if p['time'] >= today_start)
+            week_pnl = sum(p['pnl'] for p in closed_positions if p['time'] >= week_start)
+            month_pnl = sum(p['pnl'] for p in closed_positions if p['time'] >= month_start)
+            
+            # Calculate ROI (based on current balance)
+            starting_capital = total_balance - total_realized_pnl - unrealized_pnl if total_balance > 0 else 10000
+            if starting_capital <= 0:
+                starting_capital = 10000  # Fallback
+                
+            roi = (total_realized_pnl / starting_capital * 100) if starting_capital > 0 else 0
+            today_roi = (today_pnl / starting_capital * 100) if starting_capital > 0 else 0
+            week_roi = (week_pnl / starting_capital * 100) if starting_capital > 0 else 0
+            month_roi = (month_pnl / starting_capital * 100) if starting_capital > 0 else 0
+            
+            return {
+                'total_trades': trade_count,
+                'wins': wins,
+                'losses': losses,
+                'win_rate': round(win_rate, 2),
+                'total_pnl': round(total_realized_pnl, 2),
+                'avg_pnl': round(avg_pnl, 2),
+                'roi': round(roi, 2),
+                'today_pnl': round(today_pnl, 2),
+                'today_roi': round(today_roi, 2),
+                'week_pnl': round(week_pnl, 2),
+                'week_roi': round(week_roi, 2),
+                'month_pnl': round(month_pnl, 2),
+                'month_roi': round(month_roi, 2),
+                'total_balance': round(total_balance, 2),
+                'available_balance': round(available_balance, 2),
+                'unrealized_pnl': round(unrealized_pnl, 2)
+            }
+            
+        except BinanceAPIException as e:
+            raise Exception(f"Error fetching live trading stats: {e}")
 

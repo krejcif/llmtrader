@@ -35,6 +35,7 @@ TRADING_FEE_RATE = float(os.getenv("TRADING_FEE_RATE", "0.0005"))  # Default: 0.
 # Live Trading Configuration
 ENABLE_LIVE_TRADING = os.getenv("ENABLE_LIVE_TRADING", "false").lower() == "true"
 LIVE_POSITION_SIZE = float(os.getenv("LIVE_POSITION_SIZE", "100"))  # Default: $100 per trade
+LEVERAGE_DEFAULT = int(os.getenv("LEVERAGE_DEFAULT", "1"))  # Default: 1x (no leverage)
 
 # Validation
 if not DEEPSEEK_API_KEY:

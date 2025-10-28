@@ -153,6 +153,13 @@ Respond ONLY with JSON:
         # Parse response
         response_text = response.choices[0].message.content.strip()
         
+        # 🤖 LOG AI REASONING (full response from DeepSeek)
+        print(f"\n{'='*80}")
+        print(f"🤖 AI RESPONSE (SOL Strategy):")
+        print(f"{'='*80}")
+        print(response_text)
+        print(f"{'='*80}\n")
+        
         # Try to extract JSON
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0].strip()

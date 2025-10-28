@@ -411,8 +411,9 @@ def execute_live_trade(state: TradingState, strategy_configs: dict) -> TradingSt
                     db.log_strategy_run(log_data)
                     continue
                 
-                # Set leverage (default 1x for safety)
-                leverage = risk_mgmt.get('leverage', 1)
+                # Set leverage (from config or risk management)
+                leverage = risk_mgmt.get('leverage', config.LEVERAGE_DEFAULT)
+                logger.info(f"🔧 [{strategy_name.upper()}] Setting leverage: {leverage}x for {symbol}")
                 client.client.futures_change_leverage(symbol=symbol, leverage=leverage)
                 
                 # ═══════════════════════════════════════════════════════════════
@@ -452,7 +453,13 @@ def execute_live_trade(state: TradingState, strategy_configs: dict) -> TradingSt
                 # Strategy: 2 TP levels + 2 SL levels for scale-out
                 try:
                     sl_side = 'SELL' if action == 'LONG' else 'BUY'
+                    
+                    # Calculate quantities: split position into two parts
+                    # Use floor division to ensure we don't exceed total quantity
                     half_quantity = round(total_quantity / 2, quantity_precision) if quantity_precision else total_quantity / 2
+                    remaining_quantity = total_quantity - half_quantity  # Ensure exact match
+                    
+                    logger.info(f"   📊 Position split: total={total_quantity}, first={half_quantity}, second={remaining_quantity}")
                     
                     # Get price precision for the symbol
                     price_precision = 2  # default
@@ -474,9 +481,9 @@ def execute_live_trade(state: TradingState, strategy_configs: dict) -> TradingSt
                         reduceOnly=True,
                         timeInForce='GTC'
                     )
-                    logger.info(f"   ✅ Stop Loss 1: {sl1_order['orderId']} @ ${sl1:.6f} (50% position)")
+                    logger.info(f"   ✅ Stop Loss 1: {sl1_order['orderId']} @ ${sl1:.6f} (qty: {half_quantity})")
                     
-                    # Stop Loss 2: Tighter SL pro druhou půlku (50% těsnější, breakeven style)
+                    # Stop Loss 2: Tighter SL pro ZBYLOU půlku (50% těsnější, breakeven style)
                     sl2_rounded = round(sl2, price_precision)
                     sl2_order = client.client.futures_create_order(
                         symbol=symbol,
@@ -484,11 +491,11 @@ def execute_live_trade(state: TradingState, strategy_configs: dict) -> TradingSt
                         type='STOP',
                         stopPrice=sl2_rounded,
                         price=sl2_rounded,
-                        quantity=half_quantity,
+                        quantity=remaining_quantity,
                         reduceOnly=True,
                         timeInForce='GTC'
                     )
-                    logger.info(f"   ✅ Stop Loss 2: {sl2_order['orderId']} @ ${sl2:.6f} (50% position, tighter)")
+                    logger.info(f"   ✅ Stop Loss 2: {sl2_order['orderId']} @ ${sl2:.6f} (qty: {remaining_quantity}, tighter)")
                     
                     # Take Profit 1: 50% pozice @ 50% TP
                     tp1_rounded = round(tp1, price_precision)
@@ -502,9 +509,9 @@ def execute_live_trade(state: TradingState, strategy_configs: dict) -> TradingSt
                         reduceOnly=True,
                         timeInForce='GTC'
                     )
-                    logger.info(f"   ✅ Take Profit 1: {tp1_order['orderId']} @ ${tp1:.6f} (50% position)")
+                    logger.info(f"   ✅ Take Profit 1: {tp1_order['orderId']} @ ${tp1:.6f} (qty: {half_quantity})")
                     
-                    # Take Profit 2: zbylých 50% @ 100% TP
+                    # Take Profit 2: ZBYLÁ půlka @ 100% TP
                     tp2_rounded = round(tp2, price_precision)
                     tp2_order = client.client.futures_create_order(
                         symbol=symbol,
@@ -512,11 +519,11 @@ def execute_live_trade(state: TradingState, strategy_configs: dict) -> TradingSt
                         type='TAKE_PROFIT',
                         stopPrice=tp2_rounded,
                         price=tp2_rounded,
-                        quantity=half_quantity,
+                        quantity=remaining_quantity,
                         reduceOnly=True,
                         timeInForce='GTC'
                     )
-                    logger.info(f"   ✅ Take Profit 2: {tp2_order['orderId']} @ ${tp2:.6f} (50% position)")
+                    logger.info(f"   ✅ Take Profit 2: {tp2_order['orderId']} @ ${tp2:.6f} (qty: {remaining_quantity})")
                     
                 except Exception as e:
                     logger.info(f"   ⚠️  Warning: Failed to place SL/TP orders: {str(e)}")

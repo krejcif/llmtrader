@@ -346,34 +346,29 @@ class DynamicTradingBot:
             # Create strategy_configs dict for live trading
             strategy_configs = {s.name: s for s in strategies}
             
-            # Check if any strategy has live_trading enabled
+            # Check which strategies have live_trading enabled
             live_strategies = [s for s in strategies if s.live_trading]
-            paper_strategies = [s for s in strategies if not s.live_trading]
             
             # Log trading mode for each strategy
             self.logger.info("")
             self.logger.info(f"🎯 Trading Mode Summary ({len(strategies)} active strategies):")
             for s in strategies:
-                mode = "🔴 LIVE" if s.live_trading else "📝 PAPER"
-                self.logger.info(f"   [{s.name.upper()}] {mode}")
+                if s.live_trading:
+                    self.logger.info(f"   [{s.name.upper()}] 📝 PAPER + 🔴 LIVE")
+                else:
+                    self.logger.info(f"   [{s.name.upper()}] 📝 PAPER only")
             
-            # PAPER TRADING (for strategies with live_trading=False)
-            if paper_strategies:
-                self.logger.info(f"\n📝 Executing Paper Trading for {len(paper_strategies)} strategies: {', '.join(s.name for s in paper_strategies)}")
-                state = execute_paper_trade(state)
-            else:
-                self.logger.info(f"\n📝 No Paper Trading strategies (all are Live or disabled)")
+            # PAPER TRADING - Always runs for ALL strategies (for comparison)
+            self.logger.info(f"\n📝 Executing Paper Trading for ALL {len(strategies)} strategies: {', '.join(s.name for s in strategies)}")
+            state = execute_paper_trade(state)
             
-            # LIVE TRADING (for strategies with live_trading=True)
+            # LIVE TRADING - Only for strategies with live_trading=True
             if live_strategies:
                 demo_str = "DEMO/TESTNET" if config.BINANCE_DEMO else "REAL ACCOUNT"
                 self.logger.info(f"\n🔴 Executing Live Trading for {len(live_strategies)} strategies ({demo_str}): {', '.join(s.name for s in live_strategies)}")
                 state = execute_live_trade(state, strategy_configs)
             else:
-                self.logger.info(f"\n🔴 No Live Trading strategies (all are Paper or disabled)")
-            
-            if not live_strategies and not paper_strategies:
-                self.logger.info(f"\n⚠️  No trading strategies enabled")
+                self.logger.info(f"\n🔴 No Live Trading strategies enabled")
             
             # Trade execution summary
             if state.get('trade_execution', {}).get('executed'):
