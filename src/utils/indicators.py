@@ -463,14 +463,17 @@ def calculate_stop_take_profit(df: pd.DataFrame, direction: str,
         stop_method = 'ATR' if stop_loss == atr_stop_loss else '% Cap'
         tp_method = 'ATR' if take_profit == atr_take_profit else '% Cap'
     
+    # Use more precision for crypto with low prices (DOGE, etc.)
+    precision = 6 if current_price < 1 else 2
+    
     return {
-        "entry": round(current_price, 2),
-        "stop_loss": round(stop_loss, 2),
-        "take_profit": round(take_profit, 2),
-        "risk_amount": round(abs(risk), 2),
-        "reward_amount": round(reward, 2),
+        "entry": round(current_price, precision),
+        "stop_loss": round(stop_loss, precision),
+        "take_profit": round(take_profit, precision),
+        "risk_amount": round(abs(risk), precision),
+        "reward_amount": round(reward, precision),
         "risk_reward_ratio": round(risk_reward_ratio, 2),
-        "atr": round(atr, 2),
+        "atr": round(atr, precision),
         "atr_percentage": atr_data['percentage'],
         "stop_distance_percentage": round((abs(risk) / current_price) * 100, 2),
         "tp_distance_percentage": round((reward / current_price) * 100, 2),

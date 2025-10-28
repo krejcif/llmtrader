@@ -30,14 +30,8 @@ from logging.handlers import RotatingFileHandler
 class DynamicTradingBot:
     """Dynamic autonomous trading bot with configurable multi-strategy support"""
     
-    def __init__(self, monitor_interval: int = 60):
-        """
-        Initialize dynamic trading bot
-        
-        Args:
-            monitor_interval: Seconds between trade checks (default 60 = 1 min)
-        """
-        self.monitor_interval = monitor_interval
+    def __init__(self):
+        """Initialize dynamic trading bot"""
         self.running = True
         self.db = TradingDatabase()
         self.binance_client = BinanceClient()
@@ -50,14 +44,16 @@ class DynamicTradingBot:
         # Track last run time for each interval
         self.last_run_time = {interval: 0 for interval in self.all_intervals}
         self.last_run_minute = {interval: -1 for interval in self.all_intervals}  # Track UTC minute
-        self.last_monitor_time = 0
         self.last_monitoring_agent_time = 0  # Track monitoring agent runs (every 60s)
         
         # Setup logging first
         self.setup_logging()
         
-        # Monitoring agent (runs independently every minute) - pass bot's logger
-        self.monitoring_agent = MonitoringAgent(logger_instance=self.logger)
+        # Monitoring agent (runs independently every minute) - pass bot's logger and DB
+        self.monitoring_agent = MonitoringAgent(
+            logger_instance=self.logger,
+            db_instance=self.db
+        )
         self.monitoring_agent_interval = 60  # Run every 60 seconds
         
         # Counters
@@ -403,112 +399,6 @@ class DynamicTradingBot:
             import traceback
             traceback.print_exc()
     
-    def monitor_trades(self):
-        """Check and close open trades if SL/TP hit"""
-        open_trades = self.db.get_open_trades()
-        
-        if not open_trades:
-            return
-        
-        self.logger.debug(f"Monitoring {len(open_trades)} open trade(s)")
-        trades_checked = 0
-        trades_closed = 0
-        
-        for trade in open_trades:
-            try:
-                symbol = trade['symbol']
-                current_price = self.binance_client.get_current_price(symbol)
-                
-                action = trade['action']
-                stop_loss = trade['stop_loss']
-                take_profit = trade['take_profit']
-                
-                should_close = False
-                exit_price = None
-                exit_reason = None
-                
-                if action == 'LONG':
-                    if current_price <= stop_loss:
-                        should_close = True
-                        exit_price = stop_loss
-                        exit_reason = 'SL_HIT'
-                    elif current_price >= take_profit:
-                        should_close = True
-                        exit_price = take_profit
-                        exit_reason = 'TP_HIT'
-                
-                else:  # SHORT
-                    if current_price >= stop_loss:
-                        should_close = True
-                        exit_price = stop_loss
-                        exit_reason = 'SL_HIT'
-                    elif current_price <= take_profit:
-                        should_close = True
-                        exit_price = take_profit
-                        exit_reason = 'TP_HIT'
-                
-                if should_close:
-                    self.db.close_trade(trade['trade_id'], exit_price, exit_reason)
-                    
-                    # Get updated trade from DB with correct P&L (including fees)
-                    conn = __import__('sqlite3').connect(self.db.db_path)
-                    conn.row_factory = __import__('sqlite3').Row
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT * FROM trades WHERE trade_id = ?', (trade['trade_id'],))
-                    closed_trade = dict(cursor.fetchone())
-                    conn.close()
-                    
-                    # Use P&L from database (already includes fees deduction)
-                    pnl = closed_trade['pnl']
-                    pnl_pct = closed_trade['pnl_percentage']
-                    total_fees = closed_trade['total_fees']
-                    
-                    # Log trade closure
-                    pnl_sign = '+' if pnl >= 0 else ''
-                    self.logger.info("="*70)
-                    self.logger.info(f"TRADE CLOSED: {trade['trade_id']}")
-                    self.logger.info(f"  Strategy: {trade['strategy']}")
-                    self.logger.info(f"  Action: {action} @ ${trade['entry_price']}")
-                    self.logger.info(f"  Exit: ${exit_price} ({exit_reason})")
-                    self.logger.info(f"  Fees: ${total_fees:.4f} (entry + exit)")
-                    self.logger.info(f"  P&L: {pnl_sign}${pnl:.2f} ({pnl_sign}{pnl_pct:.2f}%) [after fees]")
-                    
-                    print(f"\n{'='*70}")
-                    print(f"🔔 TRADE CLOSED - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                    print(f"{'='*70}")
-                    print(f"Trade ID: {trade['trade_id']}")
-                    print(f"Strategy: {trade['strategy']}")
-                    print(f"Action: {action} @ ${trade['entry_price']}")
-                    print(f"Exit: ${exit_price} ({exit_reason})")
-                    print(f"Fees: ${total_fees:.4f}")
-                    print(f"P&L: {pnl_sign}${pnl:.2f} ({pnl_sign}{pnl_pct:.2f}%) [after fees]")
-                    
-                    # Show updated stats
-                    stats = self.db.get_trade_stats(symbol)
-                    if stats['closed_trades'] > 0:
-                        print(f"\nUpdated Stats:")
-                        print(f"  Win rate: {stats['win_rate']:.1f}%")
-                        print(f"  Total P&L: ${stats['total_pnl']:.2f}")
-                        
-                        self.logger.info(f"  Updated stats: Win rate {stats['win_rate']:.1f}%, Total P&L ${stats['total_pnl']:.2f}")
-                    
-                    print(f"{'='*70}\n")
-                    self.logger.info("="*70)
-                    
-                    self.trades_closed += 1
-                    trades_closed += 1
-                
-                trades_checked += 1
-                
-            except Exception as e:
-                self.logger.error(f"Error checking trade {trade.get('trade_id', 'unknown')}: {e}")
-                print(f"⚠️  Error checking trade {trade.get('trade_id', 'unknown')}: {e}")
-        
-        if trades_closed > 0:
-            self.logger.info(f"Monitor cycle complete: {trades_checked} checked, {trades_closed} closed")
-        
-        self.last_monitor_time = time.time()
-    
     def run_monitoring_agent_async(self):
         """
         Run monitoring agent in a separate thread (non-blocking).
@@ -535,7 +425,7 @@ class DynamicTradingBot:
         for s in self.strategies:
             self.logger.info(f"  - {s.name}: {s.timeframe_higher}/{s.timeframe_lower} every {s.interval_minutes}min")
         self.logger.info(f"Unique intervals: {self.all_intervals} minutes")
-        self.logger.info(f"Monitor interval: {self.monitor_interval}s")
+        self.logger.info(f"Monitoring agent interval: {self.monitoring_agent_interval}s")
         self.logger.info("="*70)
         
         print(f"\n{'='*70}")
@@ -567,15 +457,16 @@ class DynamicTradingBot:
         
         print(f"\n🔄 Bot will:")
         print(f"  1. Run strategies at exact UTC time marks (synchronized with Binance candle closes)")
-        print(f"  2. Monitor open trades every {self.monitor_interval} seconds")
-        print(f"  3. Run monitoring agent every {self.monitoring_agent_interval} seconds (orphaned orders cleanup)")
-        print(f"  4. Auto-execute PAPER trades on LONG/SHORT signals (always)")
+        print(f"  2. Run monitoring agent every {self.monitoring_agent_interval} seconds:")
+        print(f"     • Close paper trades when SL/TP hit")
+        print(f"     • Cancel orphaned Binance orders")
+        print(f"     • Fix incorrect order amounts")
+        print(f"  3. Auto-execute PAPER trades on LONG/SHORT signals (always)")
         if config.ENABLE_LIVE_TRADING:
-            print(f"  5. Auto-execute LIVE trades (REAL MONEY - ${config.LIVE_POSITION_SIZE} per trade) ⚠️")
-            print(f"  6. Auto-close trades when SL/TP hit (via Binance orders)")
+            print(f"  4. Auto-execute LIVE trades (REAL MONEY - ${config.LIVE_POSITION_SIZE} per trade) ⚠️")
+            print(f"  5. Auto-close LIVE trades when SL/TP hit (via Binance orders)")
         else:
-            print(f"  5. LIVE trading: DISABLED (paper trading only)")
-            print(f"  6. Auto-close paper trades when SL/TP hit")
+            print(f"  4. LIVE trading: DISABLED (paper trading only)")
         print(f"\n⏹️  Press Ctrl+C to stop gracefully")
         print(f"📁 Logs: logs/trading_bot.log")
         print(f"{'='*70}\n")
@@ -631,12 +522,8 @@ class DynamicTradingBot:
                         self.run_analysis_interval(interval_minutes)
                         self.last_run_minute[interval_minutes] = current_minute_utc
                 
-                # Check if time to monitor trades
-                time_since_monitor = current_time - self.last_monitor_time
-                if time_since_monitor >= self.monitor_interval:
-                    self.monitor_trades()
-                
                 # Check if time to run monitoring agent (every 60 seconds, async)
+                # MonitoringAgent handles: orphaned orders, order amounts, AND paper trades
                 time_since_monitoring_agent = current_time - self.last_monitoring_agent_time
                 if time_since_monitoring_agent >= self.monitoring_agent_interval:
                     self.run_monitoring_agent_async()
@@ -662,9 +549,10 @@ class DynamicTradingBot:
                         strat_names = ', '.join(s.name for s in strats)
                         next_runs.append(f"{strat_names} at {now_utc.hour:02d}:{next_minute:02d} UTC ({seconds_to_next}s)")
                     
-                    next_monitor = int(self.monitor_interval - time_since_monitor)
+                    time_since_monitoring_agent = current_time - self.last_monitoring_agent_time
+                    next_monitoring = int(self.monitoring_agent_interval - time_since_monitoring_agent)
                     
-                    status_msg = f"Bot cycle {cycle} | Next: {' | '.join(next_runs)} | Monitor: {next_monitor}s"
+                    status_msg = f"Bot cycle {cycle} | Next: {' | '.join(next_runs)} | Monitoring: {next_monitoring}s"
                     print(f"⏰ [{datetime.now().strftime('%H:%M:%S')} local / {datetime.utcnow().strftime('%H:%M:%S')} UTC] {status_msg}")
                     
                     # Log every hour
@@ -719,8 +607,6 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Dynamic Autonomous Trading Bot')
-    parser.add_argument('--monitor-interval', type=int, default=60,
-                       help='Monitor interval in seconds (default 60 = 1 min)')
     parser.add_argument('--run-once', action='store_true',
                        help='Run analysis once and exit (testing mode)')
     
@@ -729,13 +615,14 @@ def main():
     if args.run_once:
         # Testing mode - single analysis for all strategies
         print("🧪 Running in TEST mode (single analysis for all strategies)\n")
-        bot = DynamicTradingBot(args.monitor_interval)
+        bot = DynamicTradingBot()
         for interval in bot.all_intervals:
             bot.run_analysis_interval(interval)
-        bot.monitor_trades()
+        # Note: monitoring agent runs automatically in continuous mode
+        print("✅ Test run complete. Monitoring agent only runs in continuous mode.")
     else:
         # Continuous mode
-        bot = DynamicTradingBot(args.monitor_interval)
+        bot = DynamicTradingBot()
         bot.run()
 
 

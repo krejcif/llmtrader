@@ -22,7 +22,7 @@ def make_decision_doge(state: TradingState) -> TradingState:
     """
     
     # 🚨 TEMPORARY: FORCE LONG FOR TESTING PAPER TRADING 🚨
-    FORCE_LONG_TEST = True  # Set to True to test paper trading
+    FORCE_LONG_TEST = False  # Set to True to test paper trading
     
     if FORCE_LONG_TEST:
         print(f"\n⚠️  [DOGE STRATEGY - TEST MODE] FORCING LONG for paper trading test!")

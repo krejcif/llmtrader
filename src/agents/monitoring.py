@@ -30,17 +30,20 @@ class MonitoringAgent:
     Runs independently every minute.
     """
     
-    def __init__(self, logger_instance=None):
+    def __init__(self, logger_instance=None, db_instance=None):
         """
         Initialize monitoring agent
         
         Args:
             logger_instance: Optional logger instance to use (defaults to module logger)
+            db_instance: Optional database instance for paper trades monitoring
         """
         self.client = BinanceClient()
+        self.db = db_instance
         self.last_run = None
         self.run_count = 0
         self.orphaned_orders_cancelled = 0
+        self.paper_trades_closed = 0
         self.logger = logger_instance if logger_instance else logger
     
     def run(self) -> Dict:
@@ -61,13 +64,18 @@ class MonitoringAgent:
             'tasks': {}
         }
         
-        # Task 1: Check and cancel orphaned orders
+        # Task 1: Check and cancel orphaned orders (BINANCE)
         orphaned_result = self.check_and_cancel_orphaned_orders()
         results['tasks']['orphaned_orders'] = orphaned_result
         
-        # Task 2: Check and fix SL/TP order amounts
+        # Task 2: Check and fix SL/TP order amounts (BINANCE)
         amount_result = self.check_and_fix_order_amounts()
         results['tasks']['order_amounts'] = amount_result
+        
+        # Task 3: Check and close paper trades (DB)
+        if self.db:
+            paper_result = self.check_and_close_paper_trades()
+            results['tasks']['paper_trades'] = paper_result
         
         self.logger.info(f"🔍 [MONITORING] Cycle #{self.run_count} complete")
         
@@ -298,6 +306,137 @@ class MonitoringAgent:
                 'error': str(e)
             }
     
+    def check_and_close_paper_trades(self) -> Dict:
+        """
+        Monitor paper trades from DB and close them if SL/TP hit.
+        
+        Returns:
+            Dict with task results
+        """
+        if not self.db:
+            return {
+                'status': 'skipped',
+                'reason': 'No database instance provided'
+            }
+        
+        try:
+            open_trades = self.db.get_open_trades()
+            
+            if not open_trades:
+                return {
+                    'status': 'success',
+                    'trades_checked': 0,
+                    'trades_closed': 0
+                }
+            
+            self.logger.debug(f"🔍 [MONITORING] Checking {len(open_trades)} paper trade(s)")
+            trades_checked = 0
+            trades_closed = 0
+            closed_trades_info = []
+            
+            for trade in open_trades:
+                try:
+                    symbol = trade['symbol']
+                    current_price = self.client.get_current_price(symbol)
+                    
+                    action = trade['action']
+                    stop_loss = trade['stop_loss']
+                    take_profit = trade['take_profit']
+                    
+                    should_close = False
+                    exit_price = None
+                    exit_reason = None
+                    
+                    if action == 'LONG':
+                        if current_price <= stop_loss:
+                            should_close = True
+                            exit_price = stop_loss
+                            exit_reason = 'SL_HIT'
+                        elif current_price >= take_profit:
+                            should_close = True
+                            exit_price = take_profit
+                            exit_reason = 'TP_HIT'
+                    
+                    else:  # SHORT
+                        if current_price >= stop_loss:
+                            should_close = True
+                            exit_price = stop_loss
+                            exit_reason = 'SL_HIT'
+                        elif current_price <= take_profit:
+                            should_close = True
+                            exit_price = take_profit
+                            exit_reason = 'TP_HIT'
+                    
+                    if should_close:
+                        self.db.close_trade(trade['trade_id'], exit_price, exit_reason)
+                        
+                        # Get updated trade from DB with correct P&L (including fees)
+                        import sqlite3
+                        conn = sqlite3.connect(self.db.db_path)
+                        conn.row_factory = sqlite3.Row
+                        cursor = conn.cursor()
+                        cursor.execute('SELECT * FROM trades WHERE trade_id = ?', (trade['trade_id'],))
+                        closed_trade = dict(cursor.fetchone())
+                        conn.close()
+                        
+                        # Use P&L from database (already includes fees deduction)
+                        pnl = closed_trade['pnl']
+                        pnl_pct = closed_trade['pnl_percentage']
+                        total_fees = closed_trade['total_fees']
+                        
+                        # Log trade closure
+                        pnl_sign = '+' if pnl >= 0 else ''
+                        self.logger.info("="*70)
+                        self.logger.info(f"📝 PAPER TRADE CLOSED: {trade['trade_id']}")
+                        self.logger.info(f"  Strategy: {trade['strategy']}")
+                        self.logger.info(f"  Action: {action} @ ${trade['entry_price']}")
+                        self.logger.info(f"  Exit: ${exit_price} ({exit_reason})")
+                        self.logger.info(f"  Fees: ${total_fees:.4f} (entry + exit)")
+                        self.logger.info(f"  P&L: {pnl_sign}${pnl:.2f} ({pnl_sign}{pnl_pct:.2f}%) [after fees]")
+                        
+                        # Show updated stats
+                        stats = self.db.get_trade_stats(symbol)
+                        if stats['closed_trades'] > 0:
+                            self.logger.info(f"  Updated stats: Win rate {stats['win_rate']:.1f}%, Total P&L ${stats['total_pnl']:.2f}")
+                        
+                        self.logger.info("="*70)
+                        
+                        self.paper_trades_closed += 1
+                        trades_closed += 1
+                        
+                        closed_trades_info.append({
+                            'trade_id': trade['trade_id'],
+                            'symbol': symbol,
+                            'strategy': trade['strategy'],
+                            'action': action,
+                            'exit_reason': exit_reason,
+                            'pnl': pnl
+                        })
+                    
+                    trades_checked += 1
+                    
+                except Exception as e:
+                    self.logger.error(f"🔍 [MONITORING] Error checking trade {trade.get('trade_id', 'unknown')}: {e}")
+            
+            if trades_closed > 0:
+                self.logger.info(f"🔍 [MONITORING] Paper trades: {trades_checked} checked, {trades_closed} closed")
+            
+            return {
+                'status': 'success',
+                'trades_checked': trades_checked,
+                'trades_closed': trades_closed,
+                'closed_trades': closed_trades_info
+            }
+            
+        except Exception as e:
+            self.logger.error(f"🔍 [MONITORING] Error in paper trades monitoring: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
+    
     def get_stats(self) -> Dict:
         """
         Get monitoring agent statistics.
@@ -308,7 +447,8 @@ class MonitoringAgent:
         return {
             'total_runs': self.run_count,
             'last_run': self.last_run.isoformat() if self.last_run else None,
-            'total_orphaned_orders_cancelled': self.orphaned_orders_cancelled
+            'total_orphaned_orders_cancelled': self.orphaned_orders_cancelled,
+            'total_paper_trades_closed': self.paper_trades_closed
         }
 
 
