@@ -26,7 +26,7 @@ class StrategyConfig:
     
     def __init__(self, name: str, decision_func, timeframe_higher: str, 
                  timeframe_lower: str, interval_minutes: int, enabled: bool = True,
-                 analysis_func=None, symbol: str = None):
+                 analysis_func=None, symbol: str = None, live_trading: bool = False):
         """
         Initialize strategy configuration
         
@@ -39,6 +39,7 @@ class StrategyConfig:
             enabled: Whether strategy is active
             analysis_func: Optional custom analysis function (defaults to analyze_market_generic)
             symbol: Trading symbol (e.g., 'SOLUSDT', 'BTCUSDT'). Defaults to config.SYMBOL
+            live_trading: Enable live trading on Binance (uses demo if BINANCE_DEMO=true)
         """
         self.name = name
         self.symbol = symbol if symbol is not None else config.SYMBOL
@@ -49,6 +50,7 @@ class StrategyConfig:
         self.interval_minutes = interval_minutes
         self.interval_seconds = interval_minutes * 60
         self.enabled = enabled
+        self.live_trading = live_trading
         
         # State keys for this strategy
         self.market_data_key = f"market_data_{name}"
@@ -57,7 +59,7 @@ class StrategyConfig:
     
     def __repr__(self):
         return (f"StrategyConfig(name={self.name}, symbol={self.symbol}, tf={self.timeframe_higher}/{self.timeframe_lower}, "
-                f"interval={self.interval_minutes}min, enabled={self.enabled})")
+                f"interval={self.interval_minutes}min, enabled={self.enabled}, live={self.live_trading})")
 
 
 # =============================================================================

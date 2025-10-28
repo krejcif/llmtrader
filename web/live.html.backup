@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Trading - Binance Futures</title>
+    <link rel="stylesheet" href="dark-theme-final.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e1a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 18px 24px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .header-icon {
+            font-size: 48px;
+            line-height: 1;
+        }
+        
+        .header-title {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .header h1 {
+            color: #1f2937;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        
+        .header-subtitle {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .nav-link {
+            padding: 8px 16px;
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        
+        .nav-link:hover {
+            background: #3b82f6;
+            color: white;
+            border-color: #60a5fa;
+        }
+        
+        .refresh-btn {
+            background: #3b82f6;
+            color: white;
+            border: 1px solid #60a5fa;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .refresh-btn:hover {
+            background: #2563eb;
+            border-color: #3b82f6;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card {
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .stat-card h3 {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1;
+        }
+        
+        .stat-value.positive {
+            color: #10b981;
+        }
+        
+        .stat-value.negative {
+            color: #ef4444;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #6b7280;
+        }
+        
+        .section {
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .section h2 {
+            color: #1f2937;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #0f1419;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #cbd5e1;
+            border-bottom: 1px solid #334155;
+            font-size: 12px;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #334155;
+            color: #e2e8f0;
+            font-size: 13px;
+        }
+        
+        tr:hover {
+            background: #1e293b;
+        }
+        
+        .profit {
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .loss {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        
+        .badge-long {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .badge-short {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .badge-buy {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .badge-sell {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        
+        .error-state {
+            background: #7f1d1d;
+            color: #fca5a5;
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+        
+        .demo-badge {
+            background: #fbbf24;
+            color: #78350f;
+            padding: 8px 16px;
+            font-weight: 700;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="header-icon">📡</div>
+                <div class="header-title">
+                    <h1>Live Trading</h1>
+                    <div class="header-subtitle">Binance Futures Account Overview</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <span id="demoModeBadge" style="display: none;" class="demo-badge">
+                    <span>🧪</span>
+                    <span>TESTNET MODE</span>
+                </span>
+                <a href="/" class="nav-link">
+                    <span>🏠</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/logs" class="nav-link">
+                    <span>📋</span>
+                    <span>Strategy Logs</span>
+                </a>
+                <button class="refresh-btn" onclick="loadAccountData()">
+                    <span>🔄</span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Error Message (if any) -->
+        <div id="errorMessage" style="display: none;" class="error-state"></div>
+        
+        <!-- Account Summary -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>💰 Total Wallet Balance</h3>
+                <div class="stat-value" id="totalWalletBalance">--</div>
+                <div class="stat-label">USDT</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>📊 Unrealized P&L</h3>
+                <div class="stat-value" id="unrealizedPnL">--</div>
+                <div class="stat-label">USDT</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>💵 Available Balance</h3>
+                <div class="stat-value" id="availableBalance">--</div>
+                <div class="stat-label">USDT</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>🎯 Margin Balance</h3>
+                <div class="stat-value" id="marginBalance">--</div>
+                <div class="stat-label">USDT</div>
+            </div>
+        </div>
+        
+        <!-- Active Positions -->
+        <div class="section">
+            <h2>📈 Active Positions (<span id="positionCount">0</span>)</h2>
+            <div style="overflow-x: auto;">
+                <table id="positionsTable">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Size</th>
+                            <th>Entry Price</th>
+                            <th>Mark Price</th>
+                            <th>Unrealized P&L</th>
+                            <th>Leverage</th>
+                            <th>Margin Type</th>
+                            <th>Liquidation Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positionsBody">
+                        <tr><td colspan="9" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Open Orders -->
+        <div class="section">
+            <h2>📝 Open Orders (<span id="orderCount">0</span>)</h2>
+            <div style="overflow-x: auto;">
+                <table id="ordersTable">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Executed</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersBody">
+                        <tr><td colspan="8" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Assets -->
+        <div class="section">
+            <h2>💎 Assets</h2>
+            <div style="overflow-x: auto;">
+                <table id="assetsTable">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Wallet Balance</th>
+                            <th>Unrealized Profit</th>
+                            <th>Margin Balance</th>
+                            <th>Available Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetsBody">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Load data on page load
+        window.addEventListener('load', () => {
+            loadAccountData();
+            
+            // Auto-refresh every 10 seconds
+            setInterval(loadAccountData, 10000);
+        });
+        
+        async function loadAccountData() {
+            try {
+                const response = await fetch('/api/binance-account');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    showError(data.error || 'Failed to load account data');
+                    return;
+                }
+                
+                hideError();
+                
+                // Show demo mode badge if in testnet
+                if (data.demo_mode) {
+                    document.getElementById('demoModeBadge').style.display = 'inline-flex';
+                } else {
+                    document.getElementById('demoModeBadge').style.display = 'none';
+                }
+                
+                // Update account summary
+                const account = data.account;
+                document.getElementById('totalWalletBalance').textContent = account.total_wallet_balance.toFixed(2);
+                
+                const unrealizedPnL = document.getElementById('unrealizedPnL');
+                unrealizedPnL.textContent = account.total_unrealized_profit.toFixed(2);
+                unrealizedPnL.className = account.total_unrealized_profit >= 0 ? 'stat-value positive' : 'stat-value negative';
+                
+                document.getElementById('availableBalance').textContent = account.available_balance.toFixed(2);
+                document.getElementById('marginBalance').textContent = account.total_margin_balance.toFixed(2);
+                
+                // Update positions
+                const positions = data.positions || [];
+                document.getElementById('positionCount').textContent = positions.length;
+                const positionsBody = document.getElementById('positionsBody');
+                
+                if (positions.length === 0) {
+                    positionsBody.innerHTML = '<tr><td colspan="9" class="empty-state">No active positions</td></tr>';
+                } else {
+                    positionsBody.innerHTML = positions.map(pos => {
+                        const pnlClass = pos.unrealized_pnl >= 0 ? 'profit' : 'loss';
+                        const sideClass = pos.position_amt > 0 ? 'badge-long' : 'badge-short';
+                        const sideName = pos.position_amt > 0 ? 'LONG' : 'SHORT';
+                        
+                        return `
+                            <tr>
+                                <td><strong>${pos.symbol}</strong></td>
+                                <td><span class="badge ${sideClass}">${sideName}</span></td>
+                                <td>${Math.abs(pos.position_amt).toFixed(4)}</td>
+                                <td>$${pos.entry_price.toFixed(4)}</td>
+                                <td>$${pos.mark_price.toFixed(4)}</td>
+                                <td class="${pnlClass}">${pos.unrealized_pnl >= 0 ? '+' : ''}$${pos.unrealized_pnl.toFixed(2)}</td>
+                                <td>${pos.leverage}x</td>
+                                <td>${pos.margin_type}</td>
+                                <td>${pos.liquidation_price > 0 ? '$' + pos.liquidation_price.toFixed(4) : 'N/A'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                // Update orders
+                const orders = data.orders || [];
+                document.getElementById('orderCount').textContent = orders.length;
+                const ordersBody = document.getElementById('ordersBody');
+                
+                if (orders.length === 0) {
+                    ordersBody.innerHTML = '<tr><td colspan="8" class="empty-state">No open orders</td></tr>';
+                } else {
+                    ordersBody.innerHTML = orders.map(order => {
+                        const sideClass = order.side === 'BUY' ? 'badge-buy' : 'badge-sell';
+                        const orderTime = new Date(order.time).toLocaleString('cs-CZ', {
+                            timeZone: 'Europe/Prague',
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        
+                        return `
+                            <tr>
+                                <td><strong>${order.symbol}</strong></td>
+                                <td><span class="badge ${sideClass}">${order.side}</span></td>
+                                <td>${order.type}</td>
+                                <td>$${order.price.toFixed(4)}</td>
+                                <td>${order.orig_qty}</td>
+                                <td>${order.executed_qty}</td>
+                                <td>${order.status}</td>
+                                <td>${orderTime}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                // Update assets
+                const assets = data.assets || [];
+                const assetsBody = document.getElementById('assetsBody');
+                
+                if (assets.length === 0) {
+                    assetsBody.innerHTML = '<tr><td colspan="5" class="empty-state">No assets</td></tr>';
+                } else {
+                    assetsBody.innerHTML = assets.map(asset => {
+                        const pnlClass = asset.unrealized_profit >= 0 ? 'profit' : 'loss';
+                        
+                        return `
+                            <tr>
+                                <td><strong>${asset.asset}</strong></td>
+                                <td>${asset.wallet_balance.toFixed(4)}</td>
+                                <td class="${pnlClass}">${asset.unrealized_profit >= 0 ? '+' : ''}${asset.unrealized_profit.toFixed(4)}</td>
+                                <td>${asset.margin_balance.toFixed(4)}</td>
+                                <td>${asset.available_balance.toFixed(4)}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+            } catch (error) {
+                console.error('Error loading account data:', error);
+                showError('Failed to connect to Binance API: ' + error.message);
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = '⚠️ Error: ' + message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
+

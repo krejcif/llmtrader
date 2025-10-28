@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bot Management Script - Start/Stop/Status autonomous trading bot + dashboard
 
-BOT_DIR="/home/flow/langtest"
+BOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOT_PID_FILE="$BOT_DIR/bot.pid"
 BOT_LOG_FILE="$BOT_DIR/logs/bot_background.log"
 DASHBOARD_PID_FILE="$BOT_DIR/dashboard.pid"
@@ -201,7 +201,7 @@ start_dashboard() {
     
     # Start dashboard in background
     echo "🚀 Starting web API on port $DASHBOARD_PORT..."
-    nohup python src/web_api.py > "$DASHBOARD_LOG_FILE" 2>&1 &
+    nohup python3 src/web_api.py > "$DASHBOARD_LOG_FILE" 2>&1 &
     DASHBOARD_PID=$!
     
     # Save PID

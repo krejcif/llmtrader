@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Trading - Binance Futures</title>
+    <link rel="stylesheet" href="dark-theme-final.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e1a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 18px 24px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .header-icon {
+            font-size: 48px;
+            line-height: 1;
+        }
+        
+        .header-title {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .header h1 {
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        
+        .header-subtitle {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .nav-link {
+            padding: 8px 16px;
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        
+        .nav-link:hover {
+            background: #3b82f6;
+            color: white;
+            border-color: #60a5fa;
+        }
+        
+        .refresh-btn {
+            background: #3b82f6;
+            color: white;
+            border: 1px solid #60a5fa;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .refresh-btn:hover {
+            background: #2563eb;
+            border-color: #3b82f6;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card {
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .stat-card h3 {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1;
+        }
+        
+        .stat-value.positive {
+            color: #10b981;
+        }
+        
+        .stat-value.negative {
+            color: #ef4444;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #6b7280;
+        }
+        
+        .section {
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .section h2 {
+            color: #e2e8f0;
+            font-size: 18px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #0f1419;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #cbd5e1;
+            border-bottom: 1px solid #334155;
+            font-size: 12px;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #334155;
+            color: #e2e8f0;
+            font-size: 13px;
+        }
+        
+        tr:hover {
+            background: #1e293b;
+        }
+        
+        .profit {
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .loss {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        
+        .badge-long {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .badge-short {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .badge-buy {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .badge-sell {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        
+        .error-state {
+            background: #7f1d1d;
+            color: #fca5a5;
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+        
+        .demo-badge {
+            background: #fbbf24;
+            color: #78350f;
+            padding: 8px 16px;
+            font-weight: 700;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        
+        /* Analytics Grid Layout */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .analytics-card {
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 20px;
+        }
+        
+        .analytics-card h3 {
+            color: #e2e8f0;
+            font-size: 16px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        /* Performance Cards */
+        .perf-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        
+        .perf-card {
+            background: #151b2b;
+            border: 1px solid #1e293b;
+            padding: 16px;
+            text-align: center;
+        }
+        
+        .perf-card-title {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .perf-card-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        
+        .perf-card-roi {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .perf-card-meta {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+        
+        /* Risk Metrics */
+        .risk-bar {
+            width: 100%;
+            height: 24px;
+            background: #0a0e1a;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        
+        .risk-bar-fill {
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        
+        .risk-low { background: #10b981; }
+        .risk-medium { background: #fbbf24; }
+        .risk-high { background: #ef4444; }
+        
+        .risk-score {
+            display: flex;
+            gap: 6px;
+            margin: 12px 0;
+        }
+        
+        .risk-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #1e293b;
+        }
+        
+        .risk-dot.active {
+            background: #fbbf24;
+        }
+        
+        /* Funding Rate Table */
+        .funding-table {
+            width: 100%;
+            margin-top: 12px;
+        }
+        
+        .funding-table td {
+            padding: 8px 4px;
+            font-size: 12px;
+        }
+        
+        /* Alert Box */
+        .alert {
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-left: 4px solid;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .alert-high {
+            background: #7f1d1d;
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+        
+        .alert-medium {
+            background: #78350f;
+            border-color: #fbbf24;
+            color: #fde68a;
+        }
+        
+        .alert-info {
+            background: #1e3a8a;
+            border-color: #3b82f6;
+            color: #bfdbfe;
+        }
+        
+        .alert-good {
+            background: #14532d;
+            border-color: #10b981;
+            color: #86efac;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="header-icon">📡</div>
+                <div class="header-title">
+                    <h1>Live Trading</h1>
+                    <div class="header-subtitle">Binance Futures Account Overview</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <span id="demoModeBadge" style="display: none;" class="demo-badge">
+                    <span>🧪</span>
+                    <span>TESTNET MODE</span>
+                </span>
+                <a href="/" class="nav-link">
+                    <span>🏠</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/logs" class="nav-link">
+                    <span>📋</span>
+                    <span>Strategy Logs</span>
+                </a>
+                <button class="refresh-btn" onclick="loadAccountData()">
+                    <span>🔄</span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Error Message (if any) -->
+        <div id="errorMessage" style="display: none;" class="error-state"></div>
+        
+        <!-- Performance Cards -->
+        <div class="perf-cards">
+            <div class="perf-card">
+                <div class="perf-card-title">📅 TODAY</div>
+                <div class="perf-card-value" id="perfTodayPnL">$--</div>
+                <div class="perf-card-roi" id="perfTodayROI">--%</div>
+                <div class="perf-card-meta">ROI</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-card-title">📆 WEEK</div>
+                <div class="perf-card-value" id="perfWeekPnL">$--</div>
+                <div class="perf-card-roi" id="perfWeekROI">--%</div>
+                <div class="perf-card-meta">ROI</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-card-title">📋 MONTH</div>
+                <div class="perf-card-value" id="perfMonthPnL">$--</div>
+                <div class="perf-card-roi" id="perfMonthROI">--%</div>
+                <div class="perf-card-meta">ROI</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-card-title">🏆 ALL TIME</div>
+                <div class="perf-card-value" id="perfAllPnL">$--</div>
+                <div class="perf-card-roi" id="perfAllROI">--%</div>
+                <div class="perf-card-meta">ROI</div>
+            </div>
+        </div>
+        
+        <!-- Account Summary -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>💰 Total Wallet Balance</h3>
+                <div class="stat-value" id="totalWalletBalance">--</div>
+                <div class="stat-label">USDT</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>📊 Unrealized P&L</h3>
+                <div class="stat-value" id="unrealizedPnL">--</div>
+                <div class="stat-label">USDT</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>💵 Available Balance</h3>
+                <div class="stat-value" id="availableBalance">--</div>
+                <div class="stat-label">USDT</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>🎯 Margin Balance</h3>
+                <div class="stat-value" id="marginBalance">--</div>
+                <div class="stat-label">USDT</div>
+            </div>
+        </div>
+        
+        <!-- Analytics Grid -->
+        <div class="analytics-grid">
+            <!-- Equity Curve Chart -->
+            <div class="analytics-card">
+                <h3>📈 Equity Curve (30 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="equityCurveChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Portfolio Distribution Chart -->
+            <div class="analytics-card">
+                <h3>🥧 Portfolio Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="portfolioChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Risk Management & Funding -->
+        <div class="analytics-grid">
+            <!-- Risk Management -->
+            <div class="analytics-card">
+                <h3>⚠️ Risk Management</h3>
+                
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 13px; color: #e2e8f0; font-weight: 500;">Margin Usage</span>
+                        <span style="font-size: 13px; font-weight: 700; color: #e2e8f0;" id="marginUsageText">--%</span>
+                    </div>
+                    <div class="risk-bar">
+                        <div class="risk-bar-fill" id="marginUsageBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 13px; color: #e2e8f0; font-weight: 500;">Portfolio Exposure</span>
+                        <span style="font-size: 13px; font-weight: 700; color: #e2e8f0;" id="exposureText">--%</span>
+                    </div>
+                    <div class="risk-bar">
+                        <div class="risk-bar-fill" id="exposureBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <span style="font-size: 13px; color: #e2e8f0; font-weight: 500;">Risk Score</span>
+                    <div class="risk-score" id="riskScore">
+                        <div class="risk-dot"></div>
+                        <div class="risk-dot"></div>
+                        <div class="risk-dot"></div>
+                        <div class="risk-dot"></div>
+                        <div class="risk-dot"></div>
+                    </div>
+                </div>
+                
+                <div id="alertsContainer" style="margin-top: 16px;">
+                    <!-- Alerts will be inserted here -->
+                </div>
+            </div>
+            
+            <!-- Funding Rates -->
+            <div class="analytics-card">
+                <h3>💰 Funding Rates</h3>
+                <div id="fundingRatesContainer">
+                    <p style="text-align: center; color: #6b7280; padding: 40px;">Loading...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Positions -->
+        <div class="section">
+            <h2>📈 Active Positions (<span id="positionCount">0</span>)</h2>
+            <div style="overflow-x: auto;">
+                <table id="positionsTable">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Size</th>
+                            <th>Entry Price</th>
+                            <th>Mark Price</th>
+                            <th>Unrealized P&L</th>
+                            <th>Leverage</th>
+                            <th>Margin Type</th>
+                            <th>Liquidation Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positionsBody">
+                        <tr><td colspan="9" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Open Orders -->
+        <div class="section">
+            <h2>📝 Open Orders (<span id="orderCount">0</span>)</h2>
+            <div style="overflow-x: auto;">
+                <table id="ordersTable">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Executed</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersBody">
+                        <tr><td colspan="8" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Assets -->
+        <div class="section">
+            <h2>💎 Assets</h2>
+            <div style="overflow-x: auto;">
+                <table id="assetsTable">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Wallet Balance</th>
+                            <th>Unrealized Profit</th>
+                            <th>Margin Balance</th>
+                            <th>Available Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetsBody">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global chart instances
+        let equityCurveChart = null;
+        let portfolioChart = null;
+        
+        // Load data on page load
+        window.addEventListener('load', () => {
+            loadAccountData();
+            loadAnalytics();
+            
+            // Auto-refresh every 10 seconds
+            setInterval(() => {
+                loadAccountData();
+                loadAnalytics();
+            }, 10000);
+        });
+        
+        async function loadAnalytics() {
+            try {
+                const response = await fetch('/api/binance-analytics');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    console.error('Analytics error:', data.error);
+                    return;
+                }
+                
+                // Update Performance Cards
+                updatePerformanceCards(data.performance);
+                
+                // Update Charts
+                updateEquityCurve(data.equity_curve);
+                updatePortfolioChart(data.portfolio_distribution);
+                
+                // Update Risk Metrics
+                updateRiskMetrics(data.risk_metrics);
+                
+                // Update Funding Rates
+                updateFundingRates(data.funding_rates);
+                
+                // Update Alerts
+                updateAlerts(data.risk_metrics);
+                
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+        
+        function updatePerformanceCards(performance) {
+            // Today
+            const todayPnL = document.getElementById('perfTodayPnL');
+            todayPnL.textContent = '$' + performance.today.pnl.toFixed(2);
+            todayPnL.style.color = performance.today.pnl >= 0 ? '#10b981' : '#ef4444';
+            
+            const todayROI = document.getElementById('perfTodayROI');
+            todayROI.textContent = (performance.today.roi >= 0 ? '+' : '') + performance.today.roi.toFixed(2) + '%';
+            todayROI.style.color = performance.today.roi >= 0 ? '#10b981' : '#ef4444';
+            
+            // Week
+            const weekPnL = document.getElementById('perfWeekPnL');
+            weekPnL.textContent = '$' + performance.week.pnl.toFixed(2);
+            weekPnL.style.color = performance.week.pnl >= 0 ? '#10b981' : '#ef4444';
+            
+            const weekROI = document.getElementById('perfWeekROI');
+            weekROI.textContent = (performance.week.roi >= 0 ? '+' : '') + performance.week.roi.toFixed(2) + '%';
+            weekROI.style.color = performance.week.roi >= 0 ? '#10b981' : '#ef4444';
+            
+            // Month
+            const monthPnL = document.getElementById('perfMonthPnL');
+            monthPnL.textContent = '$' + performance.month.pnl.toFixed(2);
+            monthPnL.style.color = performance.month.pnl >= 0 ? '#10b981' : '#ef4444';
+            
+            const monthROI = document.getElementById('perfMonthROI');
+            monthROI.textContent = (performance.month.roi >= 0 ? '+' : '') + performance.month.roi.toFixed(2) + '%';
+            monthROI.style.color = performance.month.roi >= 0 ? '#10b981' : '#ef4444';
+            
+            // All Time
+            const allPnL = document.getElementById('perfAllPnL');
+            allPnL.textContent = '$' + performance.all_time.pnl.toFixed(2);
+            allPnL.style.color = performance.all_time.pnl >= 0 ? '#10b981' : '#ef4444';
+            
+            const allROI = document.getElementById('perfAllROI');
+            allROI.textContent = (performance.all_time.roi >= 0 ? '+' : '') + performance.all_time.roi.toFixed(2) + '%';
+            allROI.style.color = performance.all_time.roi >= 0 ? '#10b981' : '#ef4444';
+        }
+        
+        function updateEquityCurve(equityCurve) {
+            const ctx = document.getElementById('equityCurveChart').getContext('2d');
+            
+            if (equityCurveChart) {
+                equityCurveChart.destroy();
+            }
+            
+            const labels = equityCurve.map(d => d.date);
+            const balances = equityCurve.map(d => d.balance);
+            
+            equityCurveChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Balance (USDT)',
+                        data: balances,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        pointHoverRadius: 5,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            padding: 12,
+                            titleColor: '#ffffff',
+                            bodyColor: '#e2e8f0'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#e2e8f0'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#e2e8f0',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updatePortfolioChart(distribution) {
+            const ctx = document.getElementById('portfolioChart').getContext('2d');
+            
+            if (portfolioChart) {
+                portfolioChart.destroy();
+            }
+            
+            const symbols = Object.keys(distribution);
+            const values = symbols.map(s => distribution[s].percentage);
+            
+            if (symbols.length === 0) {
+                // No positions - show empty message
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#6b7280';
+                ctx.textAlign = 'center';
+                ctx.fillText('No active positions', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            const colors = [
+                '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
+                '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'
+            ];
+            
+            portfolioChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: symbols,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, symbols.length),
+                        borderWidth: 2,
+                        borderColor: '#151b2b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 12,
+                                    weight: '600'
+                                },
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    return data.labels.map((label, i) => {
+                                        return {
+                                            text: label + ' (' + data.datasets[0].data[i].toFixed(1) + '%)',
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            strokeStyle: data.datasets[0].backgroundColor[i],
+                                            fontColor: '#ffffff',
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            padding: 12,
+                            titleColor: '#ffffff',
+                            bodyColor: '#e2e8f0',
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.parsed.toFixed(2) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateRiskMetrics(riskMetrics) {
+            // Margin Usage
+            const marginUsage = riskMetrics.margin_usage;
+            document.getElementById('marginUsageText').textContent = marginUsage.toFixed(1) + '%';
+            
+            const marginBar = document.getElementById('marginUsageBar');
+            marginBar.style.width = Math.min(marginUsage, 100) + '%';
+            marginBar.className = 'risk-bar-fill ' + getRiskClass(marginUsage);
+            marginBar.textContent = marginUsage.toFixed(1) + '%';
+            
+            // Exposure
+            const exposure = riskMetrics.exposure_ratio;
+            document.getElementById('exposureText').textContent = exposure.toFixed(1) + '%';
+            
+            const exposureBar = document.getElementById('exposureBar');
+            exposureBar.style.width = Math.min(exposure, 100) + '%';
+            exposureBar.className = 'risk-bar-fill ' + getRiskClass(exposure);
+            exposureBar.textContent = exposure.toFixed(1) + '%';
+            
+            // Risk Score
+            const riskScore = riskMetrics.risk_score;
+            const scoreDots = document.querySelectorAll('#riskScore .risk-dot');
+            scoreDots.forEach((dot, index) => {
+                if (index < riskScore) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        }
+        
+        function getRiskClass(value) {
+            if (value < 40) return 'risk-low';
+            if (value < 70) return 'risk-medium';
+            return 'risk-high';
+        }
+        
+        function updateFundingRates(fundingRates) {
+            const container = document.getElementById('fundingRatesContainer');
+            
+            if (fundingRates.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 20px;">No active positions</p>';
+                return;
+            }
+            
+            let html = '<table class="funding-table">';
+            fundingRates.forEach(rate => {
+                const rateClass = rate.funding_rate > 0 ? 'loss' : 'profit';
+                const costClass = rate.cost_8h < 0 ? 'loss' : 'profit';
+                
+                html += `
+                    <tr>
+                        <td><strong>${rate.symbol}</strong></td>
+                        <td class="${rateClass}">${rate.funding_rate >= 0 ? '+' : ''}${rate.funding_rate.toFixed(4)}%</td>
+                        <td class="${costClass}">${rate.cost_8h >= 0 ? '+' : ''}$${rate.cost_8h.toFixed(3)}</td>
+                        <td style="color: #6b7280; font-size: 11px;">${rate.next_funding}</td>
+                    </tr>
+                `;
+            });
+            html += '</table>';
+            
+            container.innerHTML = html;
+        }
+        
+        function updateAlerts(riskMetrics) {
+            const container = document.getElementById('alertsContainer');
+            let alerts = [];
+            
+            // High margin usage
+            if (riskMetrics.margin_usage > 80) {
+                alerts.push({
+                    type: 'high',
+                    icon: '⚠️',
+                    message: 'High margin usage: ' + riskMetrics.margin_usage.toFixed(1) + '%'
+                });
+            }
+            
+            // High exposure
+            if (riskMetrics.exposure_ratio > 90) {
+                alerts.push({
+                    type: 'medium',
+                    icon: '⚠️',
+                    message: 'High portfolio exposure: ' + riskMetrics.exposure_ratio.toFixed(1) + '%'
+                });
+            }
+            
+            // Low risk - good
+            if (riskMetrics.risk_score <= 2) {
+                alerts.push({
+                    type: 'good',
+                    icon: '✅',
+                    message: 'Low risk profile - well managed'
+                });
+            }
+            
+            if (alerts.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7280; font-size: 12px;">No alerts</p>';
+                return;
+            }
+            
+            container.innerHTML = alerts.map(alert => 
+                `<div class="alert alert-${alert.type}">
+                    <span>${alert.icon}</span>
+                    <span>${alert.message}</span>
+                </div>`
+            ).join('');
+        }
+        
+        async function loadAccountData() {
+            try {
+                const response = await fetch('/api/binance-account');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    showError(data.error || 'Failed to load account data');
+                    return;
+                }
+                
+                hideError();
+                
+                // Show demo mode badge if in testnet
+                if (data.demo_mode) {
+                    document.getElementById('demoModeBadge').style.display = 'inline-flex';
+                } else {
+                    document.getElementById('demoModeBadge').style.display = 'none';
+                }
+                
+                // Update account summary
+                const account = data.account;
+                document.getElementById('totalWalletBalance').textContent = account.total_wallet_balance.toFixed(2);
+                
+                const unrealizedPnL = document.getElementById('unrealizedPnL');
+                unrealizedPnL.textContent = account.total_unrealized_profit.toFixed(2);
+                unrealizedPnL.className = account.total_unrealized_profit >= 0 ? 'stat-value positive' : 'stat-value negative';
+                
+                document.getElementById('availableBalance').textContent = account.available_balance.toFixed(2);
+                document.getElementById('marginBalance').textContent = account.total_margin_balance.toFixed(2);
+                
+                // Update positions
+                const positions = data.positions || [];
+                document.getElementById('positionCount').textContent = positions.length;
+                const positionsBody = document.getElementById('positionsBody');
+                
+                if (positions.length === 0) {
+                    positionsBody.innerHTML = '<tr><td colspan="9" class="empty-state">No active positions</td></tr>';
+                } else {
+                    positionsBody.innerHTML = positions.map(pos => {
+                        const pnlClass = pos.unrealized_pnl >= 0 ? 'profit' : 'loss';
+                        const sideClass = pos.position_amt > 0 ? 'badge-long' : 'badge-short';
+                        const sideName = pos.position_amt > 0 ? 'LONG' : 'SHORT';
+                        
+                        return `
+                            <tr>
+                                <td><strong>${pos.symbol}</strong></td>
+                                <td><span class="badge ${sideClass}">${sideName}</span></td>
+                                <td>${Math.abs(pos.position_amt).toFixed(4)}</td>
+                                <td>$${pos.entry_price.toFixed(4)}</td>
+                                <td>$${pos.mark_price.toFixed(4)}</td>
+                                <td class="${pnlClass}">${pos.unrealized_pnl >= 0 ? '+' : ''}$${pos.unrealized_pnl.toFixed(2)}</td>
+                                <td>${pos.leverage}x</td>
+                                <td>${pos.margin_type}</td>
+                                <td>${pos.liquidation_price > 0 ? '$' + pos.liquidation_price.toFixed(4) : 'N/A'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                // Update orders
+                const orders = data.orders || [];
+                document.getElementById('orderCount').textContent = orders.length;
+                const ordersBody = document.getElementById('ordersBody');
+                
+                if (orders.length === 0) {
+                    ordersBody.innerHTML = '<tr><td colspan="8" class="empty-state">No open orders</td></tr>';
+                } else {
+                    ordersBody.innerHTML = orders.map(order => {
+                        const sideClass = order.side === 'BUY' ? 'badge-buy' : 'badge-sell';
+                        const orderTime = new Date(order.time).toLocaleString('cs-CZ', {
+                            timeZone: 'Europe/Prague',
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        
+                        return `
+                            <tr>
+                                <td><strong>${order.symbol}</strong></td>
+                                <td><span class="badge ${sideClass}">${order.side}</span></td>
+                                <td>${order.type}</td>
+                                <td>$${order.price.toFixed(4)}</td>
+                                <td>${order.orig_qty}</td>
+                                <td>${order.executed_qty}</td>
+                                <td>${order.status}</td>
+                                <td>${orderTime}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                // Update assets
+                const assets = data.assets || [];
+                const assetsBody = document.getElementById('assetsBody');
+                
+                if (assets.length === 0) {
+                    assetsBody.innerHTML = '<tr><td colspan="5" class="empty-state">No assets</td></tr>';
+                } else {
+                    assetsBody.innerHTML = assets.map(asset => {
+                        const pnlClass = asset.unrealized_profit >= 0 ? 'profit' : 'loss';
+                        
+                        return `
+                            <tr>
+                                <td><strong>${asset.asset}</strong></td>
+                                <td>${asset.wallet_balance.toFixed(4)}</td>
+                                <td class="${pnlClass}">${asset.unrealized_profit >= 0 ? '+' : ''}${asset.unrealized_profit.toFixed(4)}</td>
+                                <td>${asset.margin_balance.toFixed(4)}</td>
+                                <td>${asset.available_balance.toFixed(4)}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+            } catch (error) {
+                console.error('Error loading account data:', error);
+                showError('Failed to connect to Binance API: ' + error.message);
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = '⚠️ Error: ' + message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
+
