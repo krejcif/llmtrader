@@ -7,6 +7,10 @@ from models.state import TradingState
 from utils.database import TradingDatabase
 from datetime import datetime, timezone, timedelta
 import config
+import logging
+
+# Get parent logger (will use DynamicTradingBot's logger)
+logger = logging.getLogger('DynamicTradingBot.PaperTrading')
 
 
 def execute_paper_trade(state: TradingState) -> TradingState:
@@ -19,7 +23,9 @@ def execute_paper_trade(state: TradingState) -> TradingState:
     Returns:
         Updated state with trade execution info
     """
-    print(f"\n📝 Executing paper trades (Multi-Strategy)...")
+    logger.info("")
+    logger.info("📝 === PAPER TRADING EXECUTION START ===")
+    logger.info("📝 Processing paper trades for all strategies...")
     
     try:
         recommendations = []
@@ -32,10 +38,11 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                 recommendations.append((strategy_name, value))
         
         if not recommendations:
-            print("❌ No recommendations from any strategy")
+            logger.info("📝 ❌ No recommendations found in state")
+            logger.info("📝 === PAPER TRADING EXECUTION END (No recommendations) ===\n")
             return state
         
-        print(f"   Found {len(recommendations)} recommendation(s): {', '.join(r[0] for r in recommendations)}")
+        logger.info(f"📝 ✅ Found {len(recommendations)} recommendation(s): {', '.join(r[0] for r in recommendations)}")
         
         executed_trades = []
         
@@ -46,7 +53,10 @@ def execute_paper_trade(state: TradingState) -> TradingState:
         
         # Execute trade for each strategy
         for strategy_name, recommendation in recommendations:
+            logger.info(f"\n📝 [{strategy_name.upper()}] Processing recommendation...")
             action = recommendation['action']
+            confidence = recommendation.get('confidence', 'unknown')
+            logger.info(f"📝 [{strategy_name.upper()}] Decision: {action} (confidence: {confidence})")
             
             # Get strategy-specific data if available, otherwise use generic
             strategy_market_data = state.get(f'market_data_{strategy_name}') or market_data
@@ -54,7 +64,8 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             
             # Ensure we have valid data (not None)
             if not strategy_analysis:
-                print(f"⚠️  [{strategy_name.upper()}] Skipping - No analysis data available")
+                logger.info(f"📝 ❌ [{strategy_name.upper()}] SKIPPED - No analysis data available")
+                logger.info(f"📝 [{strategy_name.upper()}] Reason: analysis is None or empty")
                 continue
             
             # LOG STRATEGY RUN (always log, even if not executed)
@@ -80,16 +91,19 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             if action not in ['LONG', 'SHORT']:
                 log_data['execution_reason'] = f"No trade - {action}"
                 db_log.log_strategy_run(log_data)
-                print(f"ℹ️  [{strategy_name.upper()}] No trade - {action}")
+                logger.info(f"📝 ℹ️  [{strategy_name.upper()}] NO TRADE EXECUTED - Action is {action} (not LONG or SHORT)")
+                logger.info(f"📝 [{strategy_name.upper()}] Trade skipped - waiting for LONG or SHORT signal")
                 continue
             
             # Check if strategy already has open trade (RISK MANAGEMENT!)
             db_check = TradingDatabase()
             symbol = recommendation.get('symbol', state['symbol'])
-            existing_open = db_check.get_open_trades(symbol)
+            existing_open = db_check.get_open_trades(symbol)  # trades table = only paper trades
             
             # Filter for this strategy
             strategy_open = [t for t in existing_open if t.get('strategy') == strategy_name]
+            
+            logger.info(f"📝 [{strategy_name.upper()}] Open trades check: {len(strategy_open)} existing open trade(s)")
             
             if strategy_open:
                 # Check if opposite direction - if so, close existing trades
@@ -98,6 +112,9 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                                    (existing_direction == 'SHORT' and action == 'LONG')
                 
                 if opposite_direction:
+                    logger.info(f"📝 [{strategy_name.upper()}] 🔄 OPPOSITE SIGNAL DETECTED!")
+                    logger.info(f"📝 [{strategy_name.upper()}] Existing: {existing_direction}, New signal: {action}")
+                    
                     # Close all open trades for this strategy (on opposite signal)
                     # Use last CLOSED candle price (not ticker) to avoid look-ahead bias
                     tf_lower = strategy_analysis.get('indicators', {}).get('lower_tf', {}).get('timeframe')
@@ -107,12 +124,11 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                     else:
                         # Fallback to ticker only if closed candle data not available
                         current_price = strategy_market_data.get('current_price') if strategy_market_data else market_data.get('current_price')
-                        print(f"⚠️  WARNING: Using ticker price as fallback (no closed candle data)")
+                        logger.info(f"📝 ⚠️  WARNING: Using ticker price as fallback (no closed candle data)")
                     from datetime import datetime as dt
                     
-                    print(f"🔄 [{strategy_name.upper()}] OPPOSITE SIGNAL detected!")
-                    print(f"   Closing {len(strategy_open)} {existing_direction} trade(s) on {action} signal")
-                    print(f"   Exit price: ${current_price:.2f} (last closed candle)")
+                    logger.info(f"📝 [{strategy_name.upper()}] Closing {len(strategy_open)} {existing_direction} trade(s)")
+                    logger.info(f"📝 [{strategy_name.upper()}] Exit price: ${current_price:.2f} (last closed candle)")
                     
                     for trade in strategy_open:
                         try:
@@ -135,14 +151,16 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                                 exit_reason=f"OPPOSITE_SIGNAL ({action})"
                             )
                             
-                            print(f"   ✅ Closed {trade['trade_id']}: ${entry_price:.2f} → ${current_price:.2f}")
-                            print(f"      P&L: ${pnl:+.2f} ({pnl_pct:+.2f}%)")
+                            logger.info(f"   ✅ Closed {trade['trade_id']}: ${entry_price:.2f} → ${current_price:.2f}")
+                            logger.info(f"      P&L: ${pnl:+.2f} ({pnl_pct:+.2f}%)")
                             
                         except Exception as e:
-                            print(f"   ❌ Error closing trade {trade['trade_id']}: {str(e)}")
+                            logger.info(f"   ❌ Error closing trade {trade['trade_id']}: {str(e)}")
                     
                     # DO NOT open new trade in opposite direction - just close and wait for cooldown
-                    print(f"   ✅ Trade closed. Cooldown activated - no new {action} trade opened.")
+                    logger.info(f"📝 [{strategy_name.upper()}] ✅ All trades closed successfully")
+                    logger.info(f"📝 [{strategy_name.upper()}] ⏸️  COOLDOWN ACTIVATED - No new {action} trade will be opened")
+                    logger.info(f"📝 [{strategy_name.upper()}] Reason: Risk management - waiting for next clear signal")
                     
                     # Log this event
                     log_data['executed'] = False
@@ -156,8 +174,9 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                     # Same direction - skip (don't double up)
                     log_data['execution_reason'] = f"Already has {len(strategy_open)} open {existing_direction} trade(s)"
                     db_log.log_strategy_run(log_data)
-                    print(f"⚠️  [{strategy_name.upper()}] Skipping - Already has {len(strategy_open)} open {existing_direction} trade(s)")
-                    print(f"    Open trade: {strategy_open[0]['trade_id']}")
+                    logger.info(f"📝 ⚠️  [{strategy_name.upper()}] NO TRADE EXECUTED - Already have open {existing_direction} position")
+                    logger.info(f"📝 [{strategy_name.upper()}] Existing trade: {strategy_open[0]['trade_id']}")
+                    logger.info(f"📝 [{strategy_name.upper()}] Reason: Risk management - one position per strategy at a time")
                     continue
             
             # COOLDOWN CHECK: Prevent re-entry too soon after closing previous trade
@@ -192,29 +211,40 @@ def execute_paper_trade(state: TradingState) -> TradingState:
                 
                 # COOLDOWN: Strategy-specific periods
                 COOLDOWN_MAP = {
-                    'structured': 45,   # Swing: longer cooldown
-                    'minimal': 30,      # Medium
-                    'macro': 30,        # Swing: medium cooldown
-                    'intraday': 20,     # Intraday: shorter cooldown
-                    'intraday2': 15     # Mean reversion: shortest (more trades)
+                    'sol': 30,
+                    'sol_fast': 20,
+                    'eth': 30,
+                    'eth_fast': 20,
+                    'doge': 30,
+                    'doge_fast': 20,
+                    'xrp': 30,
+                    'xrp_fast': 20
                 }
                 
                 cooldown_minutes = COOLDOWN_MAP.get(strategy_name, 30)  # Default 30min
                 
                 if time_since_exit < cooldown_minutes:
-                    log_data['execution_reason'] = f"COOLDOWN - Wait {cooldown_minutes - time_since_exit:.1f}min"
+                    remaining = cooldown_minutes - time_since_exit
+                    log_data['execution_reason'] = f"COOLDOWN - Wait {remaining:.1f}min"
                     db_log.log_strategy_run(log_data)
-                    print(f"⏳ [{strategy_name.upper()}] COOLDOWN ({cooldown_minutes}min) - Last trade closed {time_since_exit:.1f}min ago")
-                    print(f"    Waiting {cooldown_minutes - time_since_exit:.1f}min more before re-entry")
+                    logger.info(f"📝 ⏳ [{strategy_name.upper()}] NO TRADE EXECUTED - COOLDOWN ACTIVE")
+                    logger.info(f"📝 [{strategy_name.upper()}] Cooldown period: {cooldown_minutes} minutes")
+                    logger.info(f"📝 [{strategy_name.upper()}] Time since last exit: {time_since_exit:.1f} minutes")
+                    logger.info(f"📝 [{strategy_name.upper()}] Remaining cooldown: {remaining:.1f} minutes")
+                    logger.info(f"📝 [{strategy_name.upper()}] Reason: Risk management - preventing over-trading")
                     continue
+                else:
+                    logger.info(f"📝 [{strategy_name.upper()}] ✅ Cooldown check passed ({time_since_exit:.1f}min since last exit)")
             
             # Check if we have risk management
             if 'risk_management' not in recommendation:
                 log_data['execution_reason'] = "No risk management data"
                 db_log.log_strategy_run(log_data)
-                print(f"❌ [{strategy_name.upper()}] No risk management data")
+                logger.info(f"📝 ❌ [{strategy_name.upper()}] NO TRADE EXECUTED - Missing risk management data")
+                logger.info(f"📝 [{strategy_name.upper()}] Reason: Cannot execute trade without SL/TP levels")
                 continue
             
+            logger.info(f"📝 [{strategy_name.upper()}] ✅ All pre-checks passed - Proceeding with trade execution")
             risk_mgmt = recommendation['risk_management']
             
             # Initialize database
@@ -227,18 +257,14 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             entry = risk_mgmt['entry']
             original_sl = risk_mgmt['stop_loss']
             
-            # INTRADAY2 has custom TP1/TP2, others use standard partial
-            if strategy_name == 'intraday2' and 'take_profit_1' in risk_mgmt:
-                partial_tp = risk_mgmt['take_profit_1']
-                full_tp = risk_mgmt['take_profit_2']
-            else:
-                full_tp = risk_mgmt['take_profit']
-                if action == 'LONG':
-                    tp_distance = full_tp - entry
-                    partial_tp = entry + (tp_distance * 0.5)  # 50% TP
-                else:  # SHORT
-                    tp_distance = entry - full_tp
-                    partial_tp = entry - (tp_distance * 0.5)
+            # Calculate TP levels
+            full_tp = risk_mgmt['take_profit']
+            if action == 'LONG':
+                tp_distance = full_tp - entry
+                partial_tp = entry + (tp_distance * 0.5)  # 50% TP
+            else:  # SHORT
+                tp_distance = entry - full_tp
+                partial_tp = entry - (tp_distance * 0.5)
             
             # DIFFERENT SL for each partial trade
             # Partial 1: Same SL (needs to close first)
@@ -312,8 +338,8 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             }
             
             # Store both trades
-            trade_id_1 = f"{state['symbol']}_{timestamp}_{strategy_name}_partial1"
-            trade_id_2 = f"{state['symbol']}_{timestamp}_{strategy_name}_partial2"
+            trade_id_1 = f"{symbol}_{timestamp}_{strategy_name}_partial1"
+            trade_id_2 = f"{symbol}_{timestamp}_{strategy_name}_partial2"
             
             # Override trade_id in data
             import copy
@@ -373,12 +399,12 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             log_data['execution_reason'] = f"Executed 2 partial trades: {trade_id_1[:30]}, {trade_id_2[:30]}"
             db_log.log_strategy_run(log_data)
             
-            print(f"✅ [{strategy_name.upper()}] 2 Partial trades executed:")
-            print(f"   Position Size: ${TOTAL_POSITION_USD:.0f} (${partial_position_usd:.0f} each)")
-            print(f"   Quantity: {size_partial1:.4f} {state['symbol'][:3]} per partial")
-            print(f"   1/2 (50% TP): {trade_id_1[:50]}... @ TP ${round(partial_tp, 2)}")
-            print(f"   2/2 (Full TP): {trade_id_2[:50]}... @ TP ${full_tp}")
-            print(f"   Entry: ${entry} | SL: ${original_sl}")
+            logger.info(f"✅ [{strategy_name.upper()}] 2 Partial trades executed:")
+            logger.info(f"   Position Size: ${TOTAL_POSITION_USD:.0f} (${partial_position_usd:.0f} each)")
+            logger.info(f"   Quantity: {size_partial1:.4f} {state['symbol'][:3]} per partial")
+            logger.info(f"   1/2 (50% TP): {trade_id_1[:50]}... @ TP ${round(partial_tp, 2)}")
+            logger.info(f"   2/2 (Full TP): {trade_id_2[:50]}... @ TP ${full_tp}")
+            logger.info(f"   Entry: ${entry} | SL: ${original_sl}")
             
             executed_trades.append({
                 "strategy": strategy_name,
@@ -396,38 +422,38 @@ def execute_paper_trade(state: TradingState) -> TradingState:
             stats_macro = db.get_trade_stats(state['symbol'], 'macro')
             stats_intraday = db.get_trade_stats(state['symbol'], 'intraday')
             
-            print(f"\n📊 Multi-Strategy Performance:")
-            print(f"   OVERALL: {stats_all['total_trades']} trades total")
+            logger.info(f"\n📊 Multi-Strategy Performance:")
+            logger.info(f"   OVERALL: {stats_all['total_trades']} trades total")
             if stats_all.get('closed_trades', 0) > 0:
-                print(f"      Win rate: {stats_all['win_rate']:.1f}% | P&L: ${stats_all['total_pnl']:.2f}")
+                logger.info(f"      Win rate: {stats_all['win_rate']:.1f}% | P&L: ${stats_all['total_pnl']:.2f}")
             
             if stats_structured['total_trades'] > 0:
-                print(f"   STRUCTURED: {stats_structured['total_trades']} trades", end='')
+                logger.info(f"   STRUCTURED: {stats_structured['total_trades']} trades", end='')
                 if stats_structured.get('closed_trades', 0) > 0:
-                    print(f" | Win: {stats_structured['win_rate']:.1f}% | P&L: ${stats_structured['total_pnl']:.2f}")
+                    logger.info(f" | Win: {stats_structured['win_rate']:.1f}% | P&L: ${stats_structured['total_pnl']:.2f}")
                 else:
-                    print()
+                    logger.info("")
             
             if stats_minimal['total_trades'] > 0:
-                print(f"   🤖 MINIMAL: {stats_minimal['total_trades']} trades", end='')
+                logger.info(f"   🤖 MINIMAL: {stats_minimal['total_trades']} trades", end='')
                 if stats_minimal.get('closed_trades', 0) > 0:
-                    print(f" | Win: {stats_minimal['win_rate']:.1f}% | P&L: ${stats_minimal['total_pnl']:.2f}")
+                    logger.info(f" | Win: {stats_minimal['win_rate']:.1f}% | P&L: ${stats_minimal['total_pnl']:.2f}")
                 else:
-                    print()
+                    logger.info("")
             
             if stats_macro['total_trades'] > 0:
-                print(f"   🌍 MACRO: {stats_macro['total_trades']} trades", end='')
+                logger.info(f"   🌍 MACRO: {stats_macro['total_trades']} trades", end='')
                 if stats_macro.get('closed_trades', 0) > 0:
-                    print(f" | Win: {stats_macro['win_rate']:.1f}% | P&L: ${stats_macro['total_pnl']:.2f}")
+                    logger.info(f" | Win: {stats_macro['win_rate']:.1f}% | P&L: ${stats_macro['total_pnl']:.2f}")
                 else:
-                    print()
+                    logger.info("")
             
             if stats_intraday['total_trades'] > 0:
-                print(f"   ⚡ INTRADAY: {stats_intraday['total_trades']} trades", end='')
+                logger.info(f"   ⚡ INTRADAY: {stats_intraday['total_trades']} trades", end='')
                 if stats_intraday.get('closed_trades', 0) > 0:
-                    print(f" | Win: {stats_intraday['win_rate']:.1f}% | P&L: ${stats_intraday['total_pnl']:.2f}")
+                    logger.info(f" | Win: {stats_intraday['win_rate']:.1f}% | P&L: ${stats_intraday['total_pnl']:.2f}")
                 else:
-                    print()
+                    logger.info("")
             
             state['trade_execution'] = {
                 "executed": True,
@@ -448,12 +474,22 @@ def execute_paper_trade(state: TradingState) -> TradingState:
         
     except Exception as e:
         error_msg = f"Error executing paper trades: {str(e)}"
-        print(f"❌ {error_msg}")
+        logger.info(f"📝 ❌ PAPER TRADING ERROR: {error_msg}")
         import traceback
         traceback.print_exc()
         state['trade_execution'] = {
             "executed": False,
             "error": error_msg
         }
+    
+    # Final summary
+    executed_count = len([t for t in executed_trades]) if 'executed_trades' in locals() else 0
+    if executed_count > 0:
+        logger.info(f"\n📝 === PAPER TRADING EXECUTION END ===")
+        logger.info(f"📝 ✅ Successfully executed {executed_count} paper trade(s)")
+    else:
+        logger.info(f"\n📝 === PAPER TRADING EXECUTION END ===")
+        logger.info(f"📝 ℹ️  No trades executed this cycle")
+    logger.info("")
     
     return state

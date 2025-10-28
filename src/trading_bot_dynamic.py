@@ -12,6 +12,7 @@ from agents.btc_collector import collect_btc_data
 from agents.ixic_collector import collect_ixic_data
 from agents.paper_trading import execute_paper_trade
 from agents.live_trading import execute_live_trade
+from agents.monitoring import MonitoringAgent
 from utils.database import TradingDatabase
 from utils.binance_client import BinanceClient
 from strategy_config import get_active_strategies, get_all_intervals, get_min_interval, get_strategies_by_interval
@@ -50,14 +51,19 @@ class DynamicTradingBot:
         self.last_run_time = {interval: 0 for interval in self.all_intervals}
         self.last_run_minute = {interval: -1 for interval in self.all_intervals}  # Track UTC minute
         self.last_monitor_time = 0
+        self.last_monitoring_agent_time = 0  # Track monitoring agent runs (every 60s)
+        
+        # Setup logging first
+        self.setup_logging()
+        
+        # Monitoring agent (runs independently every minute) - pass bot's logger
+        self.monitoring_agent = MonitoringAgent(logger_instance=self.logger)
+        self.monitoring_agent_interval = 60  # Run every 60 seconds
         
         # Counters
         self.analysis_counts = {s.name: 0 for s in self.strategies}
         self.trades_created = 0
         self.trades_closed = 0
-        
-        # Setup logging
-        self.setup_logging()
         
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -114,7 +120,7 @@ class DynamicTradingBot:
         
         # Formatters
         detailed_formatter = logging.Formatter(
-            '%(asctime)s | %(levelname)8s | %(funcName)20s | %(message)s',
+            '%(asctime)s | %(levelname)8s | %(funcName)37s | %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
         simple_formatter = logging.Formatter(
@@ -337,18 +343,37 @@ class DynamicTradingBot:
             # Execute trades for all strategies
             print(f"\n💼 Executing trades...")
             
-            # PAPER TRADING (always runs)
-            print(f"\n📝 Paper Trading:")
-            state = execute_paper_trade(state)
+            # Create strategy_configs dict for live trading
+            strategy_configs = {s.name: s for s in strategies}
             
-            # LIVE TRADING (only if enabled)
-            if config.ENABLE_LIVE_TRADING:
-                print(f"\n💰 Live Trading (ENABLED - Real Money!):")
-                print(f"   Position size: ${config.LIVE_POSITION_SIZE} per trade")
-                state = execute_live_trade(state)
+            # Check if any strategy has live_trading enabled
+            live_strategies = [s for s in strategies if s.live_trading]
+            paper_strategies = [s for s in strategies if not s.live_trading]
+            
+            # Log trading mode for each strategy
+            self.logger.info("")
+            self.logger.info(f"🎯 Trading Mode Summary ({len(strategies)} active strategies):")
+            for s in strategies:
+                mode = "🔴 LIVE" if s.live_trading else "📝 PAPER"
+                self.logger.info(f"   [{s.name.upper()}] {mode}")
+            
+            # PAPER TRADING (for strategies with live_trading=False)
+            if paper_strategies:
+                self.logger.info(f"\n📝 Executing Paper Trading for {len(paper_strategies)} strategies: {', '.join(s.name for s in paper_strategies)}")
+                state = execute_paper_trade(state)
             else:
-                print(f"\n💰 Live Trading: DISABLED")
-                print(f"   (Set ENABLE_LIVE_TRADING=true in .env to enable)")
+                self.logger.info(f"\n📝 No Paper Trading strategies (all are Live or disabled)")
+            
+            # LIVE TRADING (for strategies with live_trading=True)
+            if live_strategies:
+                demo_str = "DEMO/TESTNET" if config.BINANCE_DEMO else "REAL ACCOUNT"
+                self.logger.info(f"\n🔴 Executing Live Trading for {len(live_strategies)} strategies ({demo_str}): {', '.join(s.name for s in live_strategies)}")
+                state = execute_live_trade(state, strategy_configs)
+            else:
+                self.logger.info(f"\n🔴 No Live Trading strategies (all are Paper or disabled)")
+            
+            if not live_strategies and not paper_strategies:
+                self.logger.info(f"\n⚠️  No trading strategies enabled")
             
             # Trade execution summary
             if state.get('trade_execution', {}).get('executed'):
@@ -356,18 +381,23 @@ class DynamicTradingBot:
                 is_live = state['trade_execution'].get('live', False)
                 trade_type = "LIVE" if is_live else "PAPER"
                 
-                print(f"\n✅ {len(trades)} {trade_type} trade(s) executed:")
+                self.logger.info(f"\n✅ {len(trades)} {trade_type} trade(s) executed:")
                 for trade_info in trades:
                     binance_ids = trade_info.get('binance_order_ids', [])
                     binance_info = f" | Binance: {binance_ids}" if binance_ids else ""
-                    print(f"   [{trade_info['strategy'].upper()}] {trade_info['trade_id']}{binance_info}")
-                    self.logger.info(f"{trade_type} Trade created [{trade_info['strategy'].upper()}]: {trade_info['trade_id']} - {trade_info['action']}")
+                    
+                    # For live trades use binance_order_id, for paper trades use trade_id
+                    if is_live:
+                        trade_id = f"Binance Order {binance_ids[0] if binance_ids else 'N/A'}"
+                    else:
+                        trade_id = trade_info.get('trade_id', 'N/A')
+                    
+                    self.logger.info(f"   [{trade_info['strategy'].upper()}] {trade_id} - {trade_info.get('action', 'N/A')}{binance_info}")
                 self.trades_created += len(trades)
             else:
-                print(f"\nℹ️  No trades executed (all NEUTRAL)")
-                self.logger.info("No trades executed - all strategies NEUTRAL")
+                self.logger.info("\nℹ️  No trades executed (all NEUTRAL)")
             
-            print(f"\n{'='*70}\n")
+            self.logger.info(f"\n{'='*70}\n")
             
             self.last_run_time[interval_minutes] = time.time()
             self.logger.info(f"Analysis cycle complete for {interval_minutes}min interval")
@@ -484,6 +514,23 @@ class DynamicTradingBot:
         
         self.last_monitor_time = time.time()
     
+    def run_monitoring_agent_async(self):
+        """
+        Run monitoring agent in a separate thread (non-blocking).
+        This allows the agent to run every minute without blocking the main trading cycle.
+        """
+        def _run_agent():
+            try:
+                self.monitoring_agent.run()
+            except Exception as e:
+                self.logger.error(f"Error in monitoring agent: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Submit to thread pool for async execution
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(_run_agent)
+    
     def run(self):
         """Main bot loop with dynamic strategy scheduling"""
         self.logger.info("="*70)
@@ -526,13 +573,14 @@ class DynamicTradingBot:
         print(f"\n🔄 Bot will:")
         print(f"  1. Run strategies at exact UTC time marks (synchronized with Binance candle closes)")
         print(f"  2. Monitor open trades every {self.monitor_interval} seconds")
-        print(f"  3. Auto-execute PAPER trades on LONG/SHORT signals (always)")
+        print(f"  3. Run monitoring agent every {self.monitoring_agent_interval} seconds (orphaned orders cleanup)")
+        print(f"  4. Auto-execute PAPER trades on LONG/SHORT signals (always)")
         if config.ENABLE_LIVE_TRADING:
-            print(f"  4. Auto-execute LIVE trades (REAL MONEY - ${config.LIVE_POSITION_SIZE} per trade) ⚠️")
-            print(f"  5. Auto-close trades when SL/TP hit (via Binance orders)")
+            print(f"  5. Auto-execute LIVE trades (REAL MONEY - ${config.LIVE_POSITION_SIZE} per trade) ⚠️")
+            print(f"  6. Auto-close trades when SL/TP hit (via Binance orders)")
         else:
-            print(f"  4. LIVE trading: DISABLED (paper trading only)")
-            print(f"  5. Auto-close paper trades when SL/TP hit")
+            print(f"  5. LIVE trading: DISABLED (paper trading only)")
+            print(f"  6. Auto-close paper trades when SL/TP hit")
         print(f"\n⏹️  Press Ctrl+C to stop gracefully")
         print(f"📁 Logs: logs/trading_bot.log")
         print(f"{'='*70}\n")
@@ -592,6 +640,12 @@ class DynamicTradingBot:
                 time_since_monitor = current_time - self.last_monitor_time
                 if time_since_monitor >= self.monitor_interval:
                     self.monitor_trades()
+                
+                # Check if time to run monitoring agent (every 60 seconds, async)
+                time_since_monitoring_agent = current_time - self.last_monitoring_agent_time
+                if time_since_monitoring_agent >= self.monitoring_agent_interval:
+                    self.run_monitoring_agent_async()
+                    self.last_monitoring_agent_time = current_time
                 
                 # Status update every 10 cycles
                 if cycle % 10 == 0:

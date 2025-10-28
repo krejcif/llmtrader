@@ -261,9 +261,9 @@ class BinanceClient:
                             'position_amt': position_amt,
                             'entry_price': float(pos['entryPrice']),
                             'unrealized_pnl': float(pos['unRealizedProfit']),
-                            'leverage': int(pos['leverage']),
+                            'leverage': int(pos.get('leverage', 1)),  # Default to 20x if not available (Testnet issue)
                             'side': 'LONG' if position_amt > 0 else 'SHORT',
-                            'liquidation_price': float(pos['liquidationPrice'])
+                            'liquidation_price': float(pos.get('liquidationPrice', 0))  # Default to 0 if not available
                         })
             
             return open_positions
@@ -461,6 +461,41 @@ class BinanceClient:
             return {'cancelled': True, 'symbol': symbol}
         except BinanceAPIException as e:
             raise Exception(f"Error canceling all orders: {e}")
+    
+    def get_account_trades(self, symbol: str, limit: int = 50) -> List[Dict]:
+        """
+        Get account trade history from Binance
+        
+        Args:
+            symbol: Trading symbol (required by Binance API)
+            limit: Number of trades to return (max 1000, default 50)
+            
+        Returns:
+            List of trades sorted by time (newest first)
+        """
+        self.check_credentials()
+        try:
+            trades = self.client.futures_account_trades(
+                symbol=symbol,
+                limit=limit
+            )
+            
+            # Sort by time descending (newest first)
+            trades_sorted = sorted(trades, key=lambda x: x['time'], reverse=True)
+            
+            return [{
+                'symbol': t['symbol'],
+                'order_id': t['orderId'],
+                'side': t['side'],  # BUY or SELL
+                'price': float(t['price']),
+                'quantity': float(t['qty']),
+                'realized_pnl': float(t['realizedPnl']),
+                'timestamp': t['time'],
+                'is_maker': t['maker']
+            } for t in trades_sorted]
+            
+        except BinanceAPIException as e:
+            raise Exception(f"Error fetching account trades: {e}")
     
     def get_open_orders(self, symbol: Optional[str] = None) -> List[Dict]:
         """

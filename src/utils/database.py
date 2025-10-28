@@ -114,7 +114,8 @@ class TradingDatabase:
                 reasoning TEXT,
                 valid INTEGER DEFAULT 1,
                 audit_notes TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                live_trade INTEGER DEFAULT 0
             )
         ''')
         
@@ -227,7 +228,19 @@ class TradingDatabase:
         conn.close()
     
     def get_open_trades(self, symbol: Optional[str] = None) -> List[Dict]:
-        """Get all open trades"""
+        """
+        Get all open paper trades (trades table is ONLY for paper trading)
+        
+        Args:
+            symbol: Filter by symbol (optional)
+        
+        Returns:
+            List of open paper trades
+        
+        Note:
+            Live trades are NOT stored in this table.
+            Check Binance API directly for live positions.
+        """
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -434,8 +447,8 @@ class TradingDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Generate run_id
-        run_id = f"{run_data['symbol']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{run_data['strategy']}"
+        # Generate run_id (with microseconds for uniqueness)
+        run_id = f"{run_data['symbol']}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{run_data['strategy']}"
         
         cursor.execute('''
             INSERT INTO strategy_runs (

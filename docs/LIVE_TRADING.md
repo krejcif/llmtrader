@@ -1,409 +1,242 @@
-# Live Trading Guide
+# Live Trading System
 
-## Přehled
+## Overview
 
-Live trading agent (`agents/live_trading.py`) umožňuje automatické provádění **skutečných obchodů** na Binance Futures paralelně s paper tradingem.
+DeepTrader now supports **per-strategy live trading** with Binance Futures. Each strategy can independently run in either **paper trading** or **live trading** mode.
 
-## ⚠️ Varování
+## Features
 
-**POZOR: Live trading provádí skutečné obchody s reálnými penězi!**
+- ✅ **Per-strategy configuration**: Enable/disable live trading for each strategy independently
+- ✅ **Demo mode (Testnet)**: Test live trading on Binance Futures Testnet before going live
+- ✅ **Web UI**: Toggle live trading on/off directly from dashboard
+- ✅ **Persistent configuration**: Settings saved across bot restarts
+- ✅ **Risk management**: Position sizing, leverage, and stop-loss from AI recommendations
+- ✅ **Safety features**: Position conflict detection, minimum position size checks
 
-- Používejte pouze s penězi, které si můžete dovolit ztratit
-- Důrazně doporučujeme začít s malými částkami ($10-$100 za trade)
-- Testujte strategii nejdříve v paper trading režimu (několik týdnů)
-- Nikdy nepoužívejte všechny své prostředky na jeden trade
-- Live trading je ve výchozím stavu **VYPNUTÝ** pro bezpečnost
+## Setup
 
-## Klíčové funkce
+### 1. Get Binance API Keys
 
-### Bezpečnostní mechanismy
+#### For Demo Trading (TESTNET - Recommended First!)
+1. Go to https://testnet.binancefuture.com/
+2. Login with GitHub/Google account
+3. Generate API Key & Secret
+4. Fund your testnet account with fake USDT (use the "Get Test Funds" button)
 
-1. **API Credentials Check**: Ověří, že máte platné API klíče
-2. **Balance Check**: Zkontroluje dostupný zůstatek před obchodem
-3. **Position Conflict Detection**: Detekuje otevřené pozice před novým obchodem
-4. **Cooldown Periods**: Zabraňuje příliš častému obchodování (15-45 min dle strategie)
-5. **Automatic Stop-Loss**: Automaticky nastaví SL objednávky na Binance
-6. **Automatic Take-Profit**: Nastaví TP objednávky (2 partial exits)
-7. **Position Sizing**: Konfigurovatelná velikost pozice (default: $100)
-8. **Database Logging**: Všechny live trades se logují do databáze pro tracking
+#### For Real Trading (USE WITH CAUTION!)
+1. Go to https://www.binance.com/
+2. Create account and complete KYC
+3. Go to API Management
+4. Create API Key with Futures permissions
+5. Save API Key and Secret
 
-### Rozdíly oproti Paper Trading
+### 2. Configure Environment
 
-| Feature | Paper Trading | Live Trading |
-|---------|--------------|--------------|
-| Execution | Simulované | Skutečné na Binance |
-| Position Size | $10,000 | $100 (konfigurovatelné) |
-| Order Fills | Okamžité @ TP/SL | Skutečné market orders |
-| Slippage | Žádný | Reálný (malý na likvidních trzích) |
-| Fees | Zahrnuté v kalkulaci | Skutečné poplatky Binance |
-| SL/TP | Monitorováno botem | Skutečné Binance orders |
-| Risk | Žádné | Reálné riziko ztráty |
-
-## Konfigurace
-
-### 1. API klíče (povinné)
-
-V `.env` souboru nastavte:
+Edit your `.env` file:
 
 ```bash
-# Binance API credentials (REQUIRED for live trading)
-BINANCE_API_KEY="your_api_key_here"
-BINANCE_API_SECRET="your_api_secret_here"
+# Binance API Configuration
+BINANCE_API_KEY=your_api_key_here
+BINANCE_API_SECRET=your_api_secret_here
+
+# Demo Mode (TESTNET)
+# Set to "true" to use Binance Testnet (demo account)
+# Set to "false" to use REAL account (BE CAREFUL!)
+BINANCE_DEMO=true
 ```
 
-**Jak získat API klíče:**
+### 3. Enable Live Trading for Strategies
 
-1. Přihlaste se na [Binance](https://www.binance.com)
-2. Jděte do Account → API Management
-3. Vytvořte nový API klíč
-4. **DŮLEŽITÉ**: Při vytváření API klíče:
-   - ✅ Povolte "Enable Futures" (pro futures trading)
-   - ✅ Povolte "Enable Reading" (pro načítání dat)
-   - ❌ NEPOVOLUJTE "Enable Withdrawals" (bezpečnost!)
-   - ❌ NEPOVOLUJTE "Enable Internal Transfer"
-5. Zapište si API Key a Secret Key (secret se zobrazí pouze jednou!)
-6. **BEZPEČNOST**: IP Whitelist - přidejte IP adresu vašeho serveru
+You can enable live trading in two ways:
 
-### 2. Aktivace Live Trading
+#### Option A: Via Web Dashboard (Recommended)
+1. Open dashboard: http://localhost:5000
+2. Scroll to "Live Trading Configuration" section
+3. Toggle "Enable Live Trading" for desired strategies
+4. Settings are saved automatically
 
-V `.env` souboru:
-
-```bash
-# Live Trading Configuration
-ENABLE_LIVE_TRADING=true              # Zapne live trading
-LIVE_POSITION_SIZE=100                # Velikost pozice v USD (default: $100)
-```
-
-**Doporučené position sizes:**
-
-- **Začátečníci**: $10-50 per trade
-- **Pokročilí**: $100-500 per trade
-- **Zkušení**: $500+ per trade (pouze pokud máte dostatečný kapitál)
-
-**Pravidlo:** Position size by měla být max 1-2% vašeho celkového kapitálu!
-
-### 3. Trading Fee Rate
-
-```bash
-TRADING_FEE_RATE=0.0005  # 0.05% (Binance Futures taker fee)
-```
-
-Binance Futures fees:
-- **Maker**: 0.02% (0.0002) - pokud přidáváte likviditu (limit orders)
-- **Taker**: 0.05% (0.0005) - pokud odebíráte likviditu (market orders)
-
-Live trading používá **market orders** (okamžité vykonání), proto platíte taker fee.
-
-## Jak to funguje
-
-### 1. Trade Execution Flow
-
-```
-Recommendation (LONG/SHORT)
-    ↓
-Check API Credentials ✓
-    ↓
-Check Account Balance ✓
-    ↓
-Check Existing Positions ✓
-    ↓
-Check Cooldown Period ✓
-    ↓
-Calculate Position Size
-    ↓
-Place 2x Market Orders (partial positions)
-    ↓
-Place Stop-Loss Order (Binance)
-    ↓
-Place Take-Profit Orders (2 partials)
-    ↓
-Log to Database ✓
-    ↓
-SUCCESS! 🎉
-```
-
-### 2. Partial Exit Strategy
-
-Live trading používá stejnou **partial exit strategii** jako paper trading:
-
-- **Trade 1/2**: 50% pozice → TP1 @ 50% distance (rychlý profit)
-- **Trade 2/2**: 50% pozice → TP2 @ 100% distance (maximální profit)
-
-**Příklad:**
-- Position size: $100
-- Partial 1: $50 → TP @ $120 (quick profit) + SL @ $95 (original)
-- Partial 2: $50 → TP @ $140 (full profit) + SL @ $97.50 (50% tighter)
-
-### 3. Automatic Order Management
-
-Po otevření pozice bot automaticky:
-
-1. **Stop-Loss 1**: STOP_MARKET @ original SL pro první partial (širší)
-2. **Stop-Loss 2**: STOP_MARKET @ 50% tighter SL pro druhou partial (break-even style)
-3. **Take-Profit 1**: TAKE_PROFIT_MARKET @ 50% distance
-4. **Take-Profit 2**: TAKE_PROFIT_MARKET @ 100% distance
-
-Tyto objednávky běží **na Binance serveru** a jsou vykonány automaticky, i když bot spadne!
-
-**SL rozdělení** (stejné jako paper trading):
-- **Partial 1**: Original SL - rychlý exit při problémech
-- **Partial 2**: 50% tighter SL - break-even protection
-
-### 4. Position Monitoring
-
-Bot **nemusí** manuálně monitorovat SL/TP, protože:
-- SL/TP jsou nastaveny jako skutečné Binance orders
-- Binance server je vykoná automaticky při dosažení ceny
-- Bot pouze loguje a sleduje otevřené pozice
-
-## Spuštění Live Trading
-
-### Před spuštěním
-
-**DŮLEŽITÁ KONTROLA:**
-
-1. ✅ API klíče správně nastaveny v `.env`
-2. ✅ ENABLE_LIVE_TRADING=true v `.env`
-3. ✅ LIVE_POSITION_SIZE nastavena na bezpečnou hodnotu
-4. ✅ Máte dostatečný balance na Binance Futures účtu
-5. ✅ Testovali jste strategii v paper trading (min 2 týdny)
-6. ✅ Znáte risk management (max 1-2% kapitálu per trade)
-
-### Spuštění botu
-
-```bash
-cd /home/flow/langtest
-./bot.sh
-```
-
-Bot vypíše na začátku:
-
-```
-🤖 DYNAMIC AUTONOMOUS TRADING BOT STARTED
-...
-🔄 Bot will:
-  1. Run strategies at exact UTC time marks
-  2. Monitor open trades every 60 seconds
-  3. Auto-execute PAPER trades (always)
-  4. Auto-execute LIVE trades (REAL MONEY - $100 per trade) ⚠️
-  5. Auto-close trades when SL/TP hit (via Binance orders)
-```
-
-### Pozorování live trades
-
-Bot bude vypisovat:
-
-```
-💰 Live Trading (ENABLED - Real Money!):
-   Position size: $100.00 per trade
-
-🚀 [MINIMAL] Opening LIVE LONG position...
-   Position: 2x $50.00 = $100.00 total
-   Quantity: 0.485 SOL per partial
-   Entry: $103.2 | SL: $101.5 | TP1: $104.5 | TP2: $105.8
-
-   📤 Placing order 1/2 (Partial TP)...
-   ✅ Order 1 filled @ $103.25
-
-   📤 Placing order 2/2 (Full TP)...
-   ✅ Order 2 filled @ $103.28
-
-   🛡️  Placing STOP LOSS @ $101.5...
-   ✅ Stop Loss set (Order ID: 12345678)
-
-   🎯 Placing TAKE PROFIT orders...
-   ✅ TP1 @ $104.5 (Order ID: 12345679)
-   ✅ TP2 @ $105.8 (Order ID: 12345680)
-
-✅ [MINIMAL] LIVE TRADES EXECUTED SUCCESSFULLY!
-   💵 Position: $100.00 | Qty: 0.970 SOL
-   📊 Entry: $103.26 | SL: $101.5 | TP1: $104.5 | TP2: $105.8
-   🌐 Binance Orders: 12345677, 12345678
-```
-
-## Paralelní provoz: Paper vs Live
-
-Bot může běžet **současně** v obou režimech:
-
-### Paper Trading
-- **Vždy aktivní** (nelze vypnout)
-- Velikost pozice: $10,000 (simulace velké pozice)
-- Účel: Testování strategií bez rizika
-- Výkon: Win rate, P&L, statistiky
-
-### Live Trading
-- **Volitelně aktivní** (ENABLE_LIVE_TRADING=true)
-- Velikost pozice: $100 (konfigurovatelné)
-- Účel: Skutečné obchodování s reálnými penězi
-- Výkon: Skutečný profit/loss na Binance účtu
-
-**Benefit**: Můžete porovnat výkonnost paperu vs live a identifikovat slippage/fees impact.
-
-## Monitoring & Statistics
-
-### Database Tracking
-
-Všechny live trades se logují do databáze s označením:
-
-```python
-"analysis_data": {
-    "live_trade": True,
-    "binance_order_id": 12345677,
-    "sl_order_id": 12345678,
-    "tp_order_id": 12345679
+#### Option B: Via Configuration File
+Edit `data/live_trading_config.json`:
+```json
+{
+  "sol": true,
+  "sol_fast": false,
+  "eth": true,
+  "eth_fast": false
 }
 ```
 
-### Viewing Trades
+### 4. Start Bot
 
 ```bash
-# Zobrazit všechny trades (paper + live)
-python src/utils/database.py stats
-
-# Filtrace live trades v databázi
-sqlite3 trading_data.db
-SELECT * FROM trades WHERE analysis_data LIKE '%"live_trade": true%';
+./bot.sh start-all
 ```
 
-### Binance Web Interface
+The bot will:
+- Show which strategies are in PAPER mode
+- Show which strategies are in LIVE mode
+- Indicate if using DEMO (Testnet) or REAL account
 
-Můžete také sledovat pozice přímo na Binance:
+## How It Works
 
-1. Futures → Positions (otevřené pozice)
-2. Futures → Orders (aktivní SL/TP orders)
-3. Futures → Order History (vyplněné objednávky)
-4. Futures → Transaction History (P&L historie)
+### Trade Execution Flow
 
-## Risk Management
+1. **Analysis**: Bot analyzes market using configured strategies
+2. **Decision**: AI generates trading recommendations (LONG/SHORT/NEUTRAL)
+3. **Execution Split**:
+   - Strategies with `live_trading=False` → Paper trading (database only)
+   - Strategies with `live_trading=True` → Live trading (Binance API)
 
-### Position Sizing
+### Live Trading Process
 
-**Zlaté pravidlo**: Nikdy neriskujte více než 1-2% kapitálu per trade!
+For strategies with live trading enabled:
+
+1. **Check Existing Positions**: Query Binance for open positions
+2. **Position Conflicts**: 
+   - If opposite direction → Close existing, open new
+   - If same direction → Skip (already in position)
+3. **Calculate Position Size**: 
+   - Based on risk management from AI (default 10% of balance)
+   - Apply leverage from recommendation
+4. **Execute Order**: Market order via Binance API
+5. **Database Logging**: Store trade in database with `live_trade=True`
+
+### Risk Management
+
+Live trading uses AI-generated risk management:
+- **Position Size**: 10% of available balance (default)
+- **Leverage**: From AI recommendation (default 1x)
+- **Stop Loss**: AI-calculated stop loss price
+- **Take Profit**: AI-calculated take profit price
+
+## Safety Features
+
+### Built-in Protections
+
+1. **Minimum Position Size**: $10 minimum (prevents dust trades)
+2. **Position Conflict Detection**: Prevents multiple positions in same symbol
+3. **Symbol Precision**: Automatic rounding to exchange requirements
+4. **Demo Mode Badge**: UI clearly shows if using Testnet or Real account
+5. **Disabled Strategy Protection**: Can't enable live trading for disabled strategies
+
+### Best Practices
+
+1. **Start with Testnet**: Always test with `BINANCE_DEMO=true` first
+2. **Small Positions**: Start with small position sizes (5-10%)
+3. **Monitor Closely**: Watch first few trades carefully
+4. **One Strategy at a Time**: Enable live trading for one strategy, verify it works
+5. **Check Logs**: Monitor `logs/trading_bot.log` for execution details
+
+## Monitoring
+
+### Dashboard
+
+- **Live Trading Configuration**: Shows all strategies with live trading toggles
+- **Recent Trades**: Shows both paper and live trades
+- **Live Dashboard** (`/live`): Real-time Binance account overview
+
+### Logs
+
+```bash
+# Main bot log
+tail -f logs/trading_bot.log
+
+# Look for:
+# 🔴 Live Trading (N strategies, DEMO/TESTNET): strategy_name
+# 🚀 [STRATEGY_NAME] Executing LONG: quantity symbol @ $price
+# ✅ Order placed: order_id (Trade ID: trade_id)
+```
+
+### Database
+
+Live trades are marked with `live_trade=True`:
+
+```bash
+sqlite3 data/trading.db "SELECT * FROM trades WHERE live_trade = 1;"
+```
+
+## Architecture
+
+### Files
+
+- `src/agents/live_trading.py` - Live trading execution logic
+- `src/agents/paper_trading.py` - Paper trading execution logic
+- `src/strategy_config.py` - Strategy configuration with `live_trading` parameter
+- `src/trading_bot_dynamic.py` - Main bot loop (splits paper/live execution)
+- `src/web_api.py` - API endpoints for strategy management
+- `data/live_trading_config.json` - Persistent live trading configuration
+
+### API Endpoints
 
 ```
-Kapitál: $10,000
-Max risk per trade: 1% = $100
-Position size: $100-200 (dle R:R ratio)
+GET  /api/strategies
+     → List all strategies with live_trading status
+
+POST /api/strategies/<strategy_name>/live-trading
+     Body: {"live_trading": true/false}
+     → Toggle live trading for strategy
 ```
 
-### Stop-Loss Distance
-
-Bot automaticky vypočítá SL based on ATR:
+## Example Output
 
 ```
-SL Distance = ATR * 1.5  (typicky 2-4% z entry)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 ANALYSIS CYCLE - 15 min interval - 2025-01-28 10:45:00
+⚡ Running 2 strategies in PARALLEL: sol, eth
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💼 Executing trades...
+
+📝 Paper Trading (1 strategies): eth
+ℹ️  [ETH] No trade - NEUTRAL
+
+🔴 Live Trading (1 strategies, DEMO/TESTNET): sol
+🧪 Using Binance TESTNET (Demo Mode)
+🚀 [SOL] Executing LONG: 10.5 SOLUSDT @ $142.3450 ($1,494.62)
+   Leverage: 1x, Position Size: 10.0%
+   ✅ Order placed: 12345678 (Trade ID: 142)
+
+✅ Executed 1 LIVE trade(s)
 ```
-
-Pokud vám to připadá moc široké nebo úzké, upravte risk management v decision funkcích.
-
-### Cooldown Periods
-
-Po uzavření trade nelze znovu vstoupit po dobu:
-
-- **Všechny strategie**: 30 min (universal cooldown)
 
 ## Troubleshooting
 
-### "No API credentials"
+### "API Secret required for private endpoints"
+- Add `BINANCE_API_KEY` and `BINANCE_API_SECRET` to `.env`
 
-**Problém**: Bot nemůže provádět live trades.
+### "APIError(code=-2014): API-key format invalid"
+- Check that API keys are correct (no spaces, full string)
+- For testnet: Keys must be from https://testnet.binancefuture.com/
 
-**Řešení**:
-1. Zkontrolujte `.env` soubor
-2. Ujistěte se, že máte `BINANCE_API_KEY` a `BINANCE_API_SECRET`
-3. Restartujte bota
+### "Position value too small"
+- Minimum position is $10
+- Increase position size or account balance
 
-### "Insufficient balance"
+### Live trading not executing
+- Check strategy is enabled: `strategy.enabled=True`
+- Check live trading enabled: Toggle in UI or check `data/live_trading_config.json`
+- Check Binance API credentials are correct
+- Check logs for error messages
 
-**Problém**: Nedostatečný zůstatek na účtu.
+### "Symbol not found on exchange"
+- Verify symbol exists on Binance Futures
+- Check symbol spelling (e.g., "SOLUSDT" not "SOL/USDT")
 
-**Řešení**:
-1. Zkontrolujte balance: `python -c "from utils.binance_client import BinanceClient; print(BinanceClient().get_account_balance())"`
-2. Vložte více prostředků na Binance Futures
-3. Nebo snižte `LIVE_POSITION_SIZE` v `.env`
+## Warnings
 
-### "Error placing order"
+⚠️ **LIVE TRADING USES REAL MONEY!**
 
-**Možné příčiny**:
-- **Precision error**: Quantity má moc decimals (zkontrolujte symbol info)
-- **Min notional**: Position je příliš malá (min ~$10 na Binance)
-- **API permissions**: API klíč nemá povolené Futures trading
-- **Rate limit**: Příliš mnoho requestů (bot čeká cooldown)
+- Always start with `BINANCE_DEMO=true` (Testnet)
+- Test thoroughly before switching to real account
+- Start with small position sizes
+- Monitor trades closely
+- Understand the risks of automated trading
+- Never invest more than you can afford to lose
 
-**Řešení**:
-1. Zkontrolujte API permissions (Enable Futures)
-2. Zvyšte LIVE_POSITION_SIZE (min $20-50)
-3. Počkejte cooldown period
+## License & Disclaimer
 
-### "Position already open"
+This software is provided "as is", without warranty of any kind. Trading cryptocurrencies
+ carries risk. The developers are not responsible for any financial losses incurred 
+through use of this software.
 
-**Problém**: Bot neotevře nový trade, protože už máte otevřenou pozici.
-
-**Důvod**: Bezpečnostní funkce - zabraňuje double-up pozicím.
-
-**Řešení**: 
-- Počkejte, až se pozice uzavře (SL/TP hit)
-- Nebo manuálně zavřete pozici na Binance, pokud chcete force exit
-
-### "Cooldown period"
-
-**Problém**: Bot čeká X minut před dalším trade.
-
-**Důvod**: Risk management - zabraňuje příliš častému obchodování.
-
-**Řešení**: Počkejte cooldown period. Je to zamýšlené chování!
-
-## Best Practices
-
-1. **Start Small**: Začněte s $10-50 per trade
-2. **Test First**: Minimálně 2 týdny paper trading před live
-3. **Monitor Closely**: První týden kontrolujte bota denně
-4. **Set Alerts**: Nastavte notifikace pro large losses (TODO: implement)
-5. **Review Stats**: Pravidelně kontrolujte win rate a P&L
-6. **Adjust Strategies**: Vypněte neúspěšné strategie v `strategy_config.py`
-7. **Keep Logs**: Archivujte log soubory pro analýzu
-8. **Use IP Whitelist**: Na Binance API klíči povolte pouze vaši IP
-
-## Vypnutí Live Trading
-
-Pokud chcete vypnout live trading:
-
-```bash
-# V .env souboru
-ENABLE_LIVE_TRADING=false
-```
-
-A restartujte bota. Paper trading bude nadále běžet.
-
-## FAQ
-
-**Q: Můžu provozovat live a paper trading současně?**  
-A: Ano! To je zamýšlené použití. Paper běží vždy, live je volitelný.
-
-**Q: Co když bot spadne během otevřené pozice?**  
-A: Bezpečné! SL/TP jsou nastaveny jako Binance orders, takže fungují i bez bota.
-
-**Q: Můžu manuálně ovládat pozice na Binance?**  
-A: Ano, ale může to zmást bot tracking. Doporučujeme nechat bota samotného.
-
-**Q: Kolik můžu vydělat?**  
-A: Závisí na strategii, market conditions a risk management. **Žádné záruky!**
-
-**Q: Můžu ztratit všechny peníze?**  
-A: Ano. Trading je rizikové. Používejte pouze peníze, které si můžete dovolit ztratit.
-
-**Q: Jak často bot obchoduje?**  
-A: Závisí na strategii a market podmínkách. Typicky 2-10 trades denně (všechny strategie dohromady).
-
-## Další kroky
-
-1. **Notifications**: Přidat Discord/Telegram notifikace pro trade alerts
-2. **Portfolio Tracking**: Sledování celkového portfolio performance
-3. **Dynamic Position Sizing**: Upravit velikost pozice dle account size
-4. **Advanced Orders**: Trailing stop, limit entries, etc.
-5. **Multi-Symbol**: Live trading pro více symbolů současně
-
----
-
-**Poslední upozornění**: Live trading je **na vlastní riziko**. Autor systému neručí za žádné ztráty. Trading je rizikové a většina traderů ztrácí peníze. Investujte zodpovědně!
-
+**Use at your own risk. Always do your own research.**

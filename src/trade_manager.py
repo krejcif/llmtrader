@@ -518,7 +518,7 @@ def main():
     parser.add_argument('command', choices=['list', 'stats', 'close', 'check', 'compare', 'audit'],
                        help='Command to execute')
     parser.add_argument('--status', choices=['open', 'closed'], help='Filter by status')
-    parser.add_argument('--strategy', choices=['structured', 'minimal', 'macro', 'intraday', 'intraday2'], help='Filter by strategy')
+    parser.add_argument('--strategy', choices=['sol', 'sol_fast', 'eth', 'eth_fast', 'doge', 'doge_fast', 'xrp', 'xrp_fast'], help='Filter by strategy')
     parser.add_argument('--symbol', help='Filter by symbol')
     parser.add_argument('--limit', type=int, default=10, help='Limit number of results')
     parser.add_argument('--trade-id', help='Trade ID for close command')

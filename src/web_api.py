@@ -74,7 +74,7 @@ def get_stats():
 def get_trades():
     """Get trades with filtering and live P&L for open positions"""
     status = request.args.get('status')  # open, closed
-    strategy = request.args.get('strategy')  # structured, minimal, minimalbtc, macro, intraday, intraday2
+    strategy = request.args.get('strategy')  # sol, sol_fast, eth, eth_fast, doge, doge_fast, xrp, xrp_fast
     limit = int(request.args.get('limit', 15))
     
     conn = sqlite3.connect(db.db_path)
@@ -855,9 +855,69 @@ def get_binance_account():
         }), 500
 
 
+@app.route('/api/binance-debug')
+def binance_debug():
+    """Debug endpoint to check Binance data"""
+    try:
+        from utils.binance_client import BinanceClient
+        from datetime import datetime, timedelta
+        
+        client = BinanceClient()
+        now = datetime.now()
+        month_ago = int((now - timedelta(days=30)).timestamp() * 1000)
+        
+        # Get income history
+        income_items = client.client.futures_income_history(
+            startTime=month_ago,
+            limit=1000
+        )
+        
+        # Analyze
+        income_types = {}
+        for item in income_items:
+            itype = item['incomeType']
+            income_types[itype] = income_types.get(itype, 0) + 1
+        
+        realized_pnl_items = [item for item in income_items if item['incomeType'] == 'REALIZED_PNL']
+        items_with_symbol = [item for item in realized_pnl_items if item.get('symbol')]
+        items_without_symbol = [item for item in realized_pnl_items if not item.get('symbol')]
+        
+        # Sample items
+        sample_with_symbol = []
+        for item in items_with_symbol[:5]:
+            sample_with_symbol.append({
+                'symbol': item.get('symbol'),
+                'income': float(item['income']),
+                'time': datetime.fromtimestamp(item['time']/1000).isoformat(),
+                'asset': item.get('asset'),
+                'info': item.get('info')
+            })
+        
+        sample_without_symbol = []
+        for item in items_without_symbol[:5]:
+            sample_without_symbol.append(item)
+        
+        return jsonify({
+            'demo_mode': client.demo,
+            'has_credentials': client.has_credentials,
+            'total_income_items': len(income_items),
+            'income_types': income_types,
+            'realized_pnl_count': len(realized_pnl_items),
+            'with_symbol': len(items_with_symbol),
+            'without_symbol': len(items_without_symbol),
+            'sample_with_symbol': sample_with_symbol,
+            'sample_without_symbol': sample_without_symbol
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 @app.route('/api/binance-analytics')
 def get_binance_analytics():
-    """Get comprehensive analytics for Binance account"""
+    """Get comprehensive analytics for Binance account (ONLY Binance data, no local DB)"""
     try:
         from utils.binance_client import BinanceClient
         from datetime import datetime, timedelta
@@ -931,7 +991,7 @@ def get_binance_analytics():
             'commission': 0
         })
         
-        # Calculate performance metrics
+        # Calculate performance metrics from Binance income history
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = now - timedelta(days=7)
         month_start = now - timedelta(days=30)
@@ -939,6 +999,105 @@ def get_binance_analytics():
         today_pnl = sum(item['realized_pnl'] for item in equity_curve if item['date'] == now.strftime('%Y-%m-%d'))
         week_pnl = sum(item['realized_pnl'] for date_str, item in zip(sorted_dates, equity_curve) if datetime.strptime(date_str, '%Y-%m-%d') >= week_start)
         month_pnl = realized_pnl_total
+        
+        # Get closed positions from Binance account trades (more reliable than income history)
+        closed_positions = {}
+        try:
+            # Get all symbols that had activity in the last 30 days
+            month_ago = int((now - timedelta(days=30)).timestamp() * 1000)
+            
+            # First, get income history to find which symbols had trades
+            print(f"🔍 Finding symbols with recent activity...")
+            income_items = client.client.futures_income_history(
+                startTime=month_ago,
+                limit=1000
+            )
+            
+            # Extract symbols from income history (use 'symbol' or 'asset' field)
+            active_symbols = set()
+            for item in income_items:
+                if item.get('symbol'):
+                    active_symbols.add(item['symbol'])
+                elif item.get('asset') and item.get('asset') != 'USDT':
+                    # Convert asset to symbol format (e.g., BTC -> BTCUSDT)
+                    active_symbols.add(item['asset'] + 'USDT')
+            
+            # Fallback: If no symbols found in income history, use symbols from strategies + open positions
+            if not active_symbols:
+                print("   ⚠️  No symbols in income history, using symbols from active strategies + open positions")
+                # Add symbols from open positions
+                for pos in positions:
+                    if float(pos['positionAmt']) != 0:
+                        active_symbols.add(pos['symbol'])
+                
+                # Add symbols from all active strategies
+                for strategy in STRATEGIES:
+                    if strategy.enabled:
+                        symbol = strategy.symbol.upper() if strategy.symbol else ''
+                        if symbol:
+                            active_symbols.add(symbol)
+                
+                print(f"   Symbols from strategies: {sorted(active_symbols)}")
+            
+            print(f"   Found {len(active_symbols)} symbols to check: {sorted(list(active_symbols))[:10]}")
+            
+            # Now fetch actual trades for each symbol to get accurate P&L
+            all_trades = []
+            for symbol in active_symbols:
+                try:
+                    # Note: Binance Testnet may have issues with startTime, so we fetch last 1000 trades
+                    trades = client.client.futures_account_trades(
+                        symbol=symbol,
+                        limit=1000
+                    )
+                    all_trades.extend(trades)
+                    print(f"   - {symbol}: {len(trades)} trades")
+                except Exception as e:
+                    print(f"   ⚠️  Could not fetch trades for {symbol}: {e}")
+            
+            print(f"✅ Total trades fetched: {len(all_trades)}")
+            
+            # Aggregate trades by symbol
+            for trade in all_trades:
+                symbol = trade['symbol']
+                realized_pnl = float(trade.get('realizedPnl', 0))
+                commission = float(trade.get('commission', 0))
+                timestamp = trade['time']
+                
+                if symbol not in closed_positions:
+                    closed_positions[symbol] = {
+                        'symbol': symbol,
+                        'realized_pnl': 0,
+                        'total_commission': 0,
+                        'trade_count': 0,
+                        'last_trade_time': timestamp,
+                        'first_trade_time': timestamp
+                    }
+                
+                closed_positions[symbol]['realized_pnl'] += realized_pnl
+                closed_positions[symbol]['total_commission'] += abs(commission)
+                closed_positions[symbol]['trade_count'] += 1
+                closed_positions[symbol]['last_trade_time'] = max(
+                    closed_positions[symbol]['last_trade_time'], 
+                    timestamp
+                )
+                closed_positions[symbol]['first_trade_time'] = min(
+                    closed_positions[symbol]['first_trade_time'], 
+                    timestamp
+                )
+            
+            # Filter out symbols with no realized P&L (only entry/exit pairs count)
+            closed_positions = {
+                sym: data for sym, data in closed_positions.items()
+                if data['realized_pnl'] != 0 or data['trade_count'] >= 2
+            }
+            
+            print(f"📊 Aggregated {len(closed_positions)} closed positions with P&L")
+            
+        except Exception as e:
+            print(f"❌ Error aggregating closed positions: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Calculate portfolio distribution by symbol
         portfolio_distribution = {}
@@ -1017,6 +1176,27 @@ def get_binance_analytics():
                 except:
                     pass
         
+        # Format closed positions for frontend (sorted by last trade time)
+        formatted_positions = []
+        for symbol, pos_data in sorted(
+            closed_positions.items(), 
+            key=lambda x: x[1]['last_trade_time'], 
+            reverse=True
+        ):
+            formatted_positions.append({
+                'symbol': symbol,
+                'realized_pnl': pos_data['realized_pnl'],
+                'commission': pos_data['total_commission'],
+                'net_pnl': pos_data['realized_pnl'] - pos_data['total_commission'],
+                'trade_count': pos_data['trade_count'],
+                'last_trade': datetime.fromtimestamp(pos_data['last_trade_time'] / 1000).isoformat(),
+                'duration_hours': (pos_data['last_trade_time'] - pos_data['first_trade_time']) / (1000 * 3600)
+            })
+        
+        # Calculate total stats
+        total_commission = sum(p['commission'] for p in formatted_positions)
+        total_net_pnl = sum(p['net_pnl'] for p in formatted_positions)
+        
         return jsonify({
             'success': True,
             'equity_curve': equity_curve[-30:],  # Last 30 days
@@ -1048,7 +1228,14 @@ def get_binance_analytics():
                 'maintenance_margin': total_maintenance_margin
             },
             'funding_rates': funding_rates,
-            'total_position_value': total_position_value
+            'total_position_value': total_position_value,
+            'closed_positions': formatted_positions,
+            'statistics': {
+                'total_positions': len(formatted_positions),
+                'total_commission': total_commission,
+                'total_net_pnl': total_net_pnl,
+                'starting_balance': starting_balance
+            }
         })
         
     except Exception as e:
@@ -1326,6 +1513,87 @@ Keep analysis concise but technical. Use plain language but don't shy away from 
             'success': False,
             'analysis': f'Error generating analysis: {str(e)}'
         })
+
+
+@app.route('/api/strategies')
+def get_strategies():
+    """Get all strategies with their configuration"""
+    try:
+        strategies_list = []
+        
+        for strategy in STRATEGIES:
+            strategies_list.append({
+                'name': strategy.name,
+                'symbol': strategy.symbol,
+                'timeframe_higher': strategy.timeframe_higher,
+                'timeframe_lower': strategy.timeframe_lower,
+                'interval_minutes': strategy.interval_minutes,
+                'enabled': strategy.enabled,
+                'live_trading': strategy.live_trading
+            })
+        
+        return jsonify({
+            'success': True,
+            'strategies': strategies_list,
+            'binance_demo': config.BINANCE_DEMO
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/strategies/<strategy_name>/live-trading', methods=['POST'])
+def toggle_live_trading(strategy_name):
+    """Toggle live trading for a strategy"""
+    try:
+        data = request.get_json()
+        live_trading = data.get('live_trading', False)
+        
+        # Find strategy and update
+        strategy = next((s for s in STRATEGIES if s.name == strategy_name), None)
+        
+        if not strategy:
+            return jsonify({
+                'success': False,
+                'error': f'Strategy {strategy_name} not found'
+            }), 404
+        
+        # Update strategy configuration
+        strategy.live_trading = live_trading
+        
+        # Save to persistent storage
+        live_trading_file = os.path.join(os.path.dirname(__file__), '../data/live_trading_config.json')
+        os.makedirs(os.path.dirname(live_trading_file), exist_ok=True)
+        
+        # Load existing config
+        live_config = {}
+        if os.path.exists(live_trading_file):
+            with open(live_trading_file, 'r') as f:
+                live_config = json.load(f)
+        
+        # Update config
+        live_config[strategy_name] = live_trading
+        
+        # Save config
+        with open(live_trading_file, 'w') as f:
+            json.dump(live_config, f, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'strategy': strategy_name,
+            'live_trading': live_trading,
+            'message': f'Live trading {"enabled" if live_trading else "disabled"} for {strategy_name}'
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 if __name__ == '__main__':

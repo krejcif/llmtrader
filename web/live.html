@@ -651,6 +651,40 @@
                 </table>
             </div>
         </div>
+        
+        <!-- Closed Positions History -->
+        <div class="section">
+            <h2>📜 Closed Positions History (<span id="positionsCount">0</span>)</h2>
+            <div style="overflow-x: auto;">
+                <table id="closedPositionsTable">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Realized P&L</th>
+                            <th>Commission</th>
+                            <th>Net P&L</th>
+                            <th>Trades</th>
+                            <th>Duration</th>
+                            <th>Last Trade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="closedPositionsBody">
+                        <tr><td colspan="7" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Live Trading Configuration -->
+        <div class="section">
+            <h2>🔴 Live Trading Configuration</h2>
+            <div id="liveConfigDemoModeBadge" style="display: none; padding: 12px; background: #1e3a8a; border: 1px solid #3b82f6; margin-bottom: 16px; color: #bfdbfe; font-size: 14px;">
+                <span style="font-weight: 700;">🧪 TESTNET MODE:</span> Live trading will execute on Binance Testnet (demo account)
+            </div>
+            <div id="strategiesContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;">
+                <!-- Strategies will be loaded here -->
+            </div>
+        </div>
     </div>
     
     <script>
@@ -662,12 +696,16 @@
         window.addEventListener('load', () => {
             loadAccountData();
             loadAnalytics();
+            loadStrategies();
             
             // Auto-refresh every 10 seconds
             setInterval(() => {
                 loadAccountData();
                 loadAnalytics();
             }, 10000);
+            
+            // Refresh strategies every 30 seconds
+            setInterval(loadStrategies, 30000);
         });
         
         async function loadAnalytics() {
@@ -695,6 +733,9 @@
                 
                 // Update Alerts
                 updateAlerts(data.risk_metrics);
+                
+                // Update Closed Positions
+                updateClosedPositions(data.closed_positions || [], data.statistics || {});
                 
             } catch (error) {
                 console.error('Error loading analytics:', error);
@@ -946,6 +987,46 @@
             container.innerHTML = html;
         }
         
+        function updateClosedPositions(positions, statistics) {
+            const tbody = document.getElementById('closedPositionsBody');
+            const countSpan = document.getElementById('positionsCount');
+            
+            countSpan.textContent = statistics.total_positions || positions.length;
+            
+            if (positions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No closed positions in the last 30 days</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = positions.map(position => {
+                const lastTradeTime = new Date(position.last_trade).toLocaleString();
+                const realizedPnlClass = position.realized_pnl > 0 ? 'profit' : position.realized_pnl < 0 ? 'loss' : '';
+                const netPnlClass = position.net_pnl > 0 ? 'profit' : position.net_pnl < 0 ? 'loss' : '';
+                
+                // Format duration
+                let durationStr = '';
+                if (position.duration_hours < 1) {
+                    durationStr = Math.round(position.duration_hours * 60) + 'm';
+                } else if (position.duration_hours < 24) {
+                    durationStr = position.duration_hours.toFixed(1) + 'h';
+                } else {
+                    durationStr = (position.duration_hours / 24).toFixed(1) + 'd';
+                }
+                
+                return `
+                    <tr>
+                        <td><strong>${position.symbol}</strong></td>
+                        <td class="${realizedPnlClass}">$${position.realized_pnl.toFixed(2)}</td>
+                        <td class="loss">-$${position.commission.toFixed(2)}</td>
+                        <td class="${netPnlClass}"><strong>$${position.net_pnl.toFixed(2)}</strong></td>
+                        <td>${position.trade_count} trades</td>
+                        <td>${durationStr}</td>
+                        <td>${lastTradeTime}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
         function updateAlerts(riskMetrics) {
             const container = document.getElementById('alertsContainer');
             let alerts = [];
@@ -1119,6 +1200,105 @@
         
         function hideError() {
             document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        async function loadStrategies() {
+            try {
+                const response = await fetch('/api/strategies');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    console.error('Failed to load strategies:', data.error);
+                    return;
+                }
+                
+                // Show/hide demo mode badge
+                const demoBadge = document.getElementById('liveConfigDemoModeBadge');
+                if (data.binance_demo) {
+                    demoBadge.style.display = 'block';
+                } else {
+                    demoBadge.style.display = 'none';
+                }
+                
+                // Render strategies
+                const container = document.getElementById('strategiesContainer');
+                container.innerHTML = '';
+                
+                for (const strategy of data.strategies) {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background: #151b2b; border: 1px solid #1e293b; padding: 16px;';
+                    
+                    const isLive = strategy.live_trading;
+                    const statusColor = isLive ? '#10b981' : '#6b7280';
+                    const statusText = isLive ? 'LIVE' : 'PAPER';
+                    
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-size: 16px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">
+                                    ${strategy.name.toUpperCase()}
+                                </div>
+                                <div style="font-size: 12px; color: #94a3b8;">
+                                    ${strategy.symbol} • ${strategy.timeframe_higher}/${strategy.timeframe_lower} • ${strategy.interval_minutes}min
+                                </div>
+                            </div>
+                            <div style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 8px; font-size: 11px; font-weight: 700;">
+                                ${statusText}
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid #1e293b;">
+                            <label style="font-size: 13px; color: #e2e8f0; cursor: pointer; user-select: none;">
+                                <input type="checkbox" 
+                                       ${isLive ? 'checked' : ''} 
+                                       ${strategy.enabled ? '' : 'disabled'}
+                                       onchange="toggleLiveTrading('${strategy.name}', this.checked)"
+                                       style="margin-right: 8px;">
+                                Enable Live Trading
+                            </label>
+                            ${!strategy.enabled ? '<span style="font-size: 11px; color: #fbbf24;">Strategy Disabled</span>' : ''}
+                        </div>
+                    `;
+                    
+                    container.appendChild(card);
+                }
+            } catch (error) {
+                console.error('Error loading strategies:', error);
+            }
+        }
+        
+        async function toggleLiveTrading(strategyName, enabled) {
+            try {
+                const response = await fetch(`/api/strategies/${strategyName}/live-trading`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        live_trading: enabled
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show success message
+                    const statusText = enabled ? 'enabled' : 'disabled';
+                    console.log(`✅ Live trading ${statusText} for ${strategyName}`);
+                    
+                    // Reload strategies to update UI
+                    await loadStrategies();
+                } else {
+                    alert(`❌ Error: ${data.error}`);
+                    // Reload to reset checkbox
+                    await loadStrategies();
+                }
+            } catch (error) {
+                console.error('Error toggling live trading:', error);
+                alert(`❌ Error: ${error.message}`);
+                // Reload to reset checkbox
+                await loadStrategies();
+            }
         }
     </script>
 </body>

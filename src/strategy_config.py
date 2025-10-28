@@ -199,3 +199,31 @@ def get_min_interval():
     intervals = get_all_intervals()
     return min(intervals) if intervals else 15
 
+
+def load_live_trading_config():
+    """Load live trading configuration from JSON file and apply to strategies"""
+    import json
+    import os
+    
+    config_file = os.path.join(os.path.dirname(__file__), '../data/live_trading_config.json')
+    
+    if not os.path.exists(config_file):
+        return
+    
+    try:
+        with open(config_file, 'r') as f:
+            live_config = json.load(f)
+        
+        # Apply config to strategies
+        for strategy in STRATEGIES:
+            if strategy.name in live_config:
+                strategy.live_trading = live_config[strategy.name]
+                print(f"   Loaded live_trading={strategy.live_trading} for {strategy.name}")
+    
+    except Exception as e:
+        print(f"⚠️  Warning: Could not load live trading config: {e}")
+
+
+# Load live trading config on module import
+load_live_trading_config()
+
